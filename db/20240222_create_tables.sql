@@ -1,3 +1,5 @@
+-- sqlite3 belay.sqlite3 < 20240222_create_tables.sql
+
 create table users (
     id INTEGER PRIMARY KEY,
     name VARCHAR(40) UNIQUE,
