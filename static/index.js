@@ -1,60 +1,18 @@
-// TODO: App component
-class App extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            currentPage: 'splash', // This could be 'splash', 'profile', 'login', or 'channel'
-            user: null, // User details or null if not logged in
-            channels: [], // List of channels
-        };
-    }
+const {
+    BrowserRouter,
+    Switch,
+    Route,
+    Link,
+    useHistory,
+} = ReactRouterDOM;
 
-    // componentDidMount() {
-    //   this.checkUserSession();
-    // }
+// Refactor App component to use BrowserRouter and Route
+function App() {
+    const [user, setUser] = React.useState(null);
+    const [apikey, setapikey] = React.useState(null);
+    const [channels, setChannels] = React.useState([]);
 
-    checkUserSession = () => {
-        const apiKey = localStorage.getItem('apiKey');
-        if (!apiKey) {
-            this.setState({currentPage: 'login'});
-            return;
-        }
-
-        // Assuming you have an endpoint '/api/profile' that returns user details based on a valid API key
-        fetch('/api/profile', {
-            method: 'GET',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(response => {
-                if (response.ok) {
-                    return response.json();
-                } else {
-                    throw new Error('Session validation failed');
-                }
-            })
-            .then(data => {
-                this.setState({
-                    user: {
-                        id: data.id,
-                        username: data.username,
-                        apiKey: data.api_key, // Consider if you really need to store the API key in state
-                    },
-                    currentPage: 'splash', // Redirect to the splash page or another appropriate page
-                });
-                // Optionally, fetch channels or other data now that the user is confirmed logged in
-            })
-            .catch(error => {
-                console.error('Error checking user session:', error);
-                this.setState({currentPage: 'login'});
-                localStorage.removeItem('apiKey'); // Clear stored API key if session check fails
-            });
-    };
-
-
-    handleLogin = (username, password) => {
+    const handleLogin = (username, password) => {
         return fetch('/api/login', {
             method: 'POST',
             headers: {
@@ -70,17 +28,23 @@ class App extends React.Component {
                 return response.json();
             })
             .then(data => {
+                console.log("data", data)
                 // Assuming the API returns a user object with an api_key on successful login
-                this.setState({
-                    user: {
-                        id: data.id,
-                        username: data.username,
-                        apiKey: data.api_key,
-                    },
-                    currentPage: 'splash', // Navigate to the splash page or another appropriate page upon login
+                setUser({
+                    id: data.id,
+                    username: data.username,
+                    apiKey: data.api_key
                 });
+
+                console.log("user", user);
+
                 // Store the api_key in localStorage or another secure place for future requests
-                localStorage.setItem('apiKey', data.api_key);
+                localStorage.setItem('api_key', data.api_key);
+                setapikey(localStorage.getItem('api_key'))
+                // Navigate to the splash page or another appropriate page upon login
+                // This can be done using the useHistory hook if this logic is inside a component or withRouter HOC
+                // For example: history.push('/');
+
                 return true; // Indicate success
             })
             .catch(error => {
@@ -90,164 +54,160 @@ class App extends React.Component {
             });
     };
 
-    handleLogout = () => {
-        // Clear user details from the state
-        this.setState({user: null, currentPage: 'login'});
 
-        // Remove the stored API key or token from local storage
-        localStorage.removeItem('apiKey');
+    // Placeholder function for user logout
+    const handleLogout = () => {
+        setUser(null);
+        // Redirect to login page using useHistory hook in a component or withRouter HOC
     };
 
-    navigateTo = (page) => {
-        this.setState({currentPage: page});
-    };
-
-    // Function to handle user click on the Signup button
-    onSignupClick = () => {
-        this.setState({currentPage: 'signup'});
-        // For a more advanced setup, you might navigate to a signup route using React Router
-    };
-
-    // Function to handle user click on the Create Room button
-    onCreateRoomClick = () => {
-        // Check if the user is not null (meaning, the user is logged in)
-        if (this.state.user) {
-            // Here you might implement the logic to show a room creation form
-            // Or directly create a room if no additional information is needed from the user
-            this.createRoom(); // Assume this is a method to create a room
-        } else {
-            alert('You must be logged in to create a room.');
-            // Optionally, redirect the user to the login page
-            this.setState({currentPage: 'login'});
-        }
-    };
-
-    // Placeholder for a method to create a room
-    createRoom = () => {
-        // Assuming an API call to create a room, then fetch rooms list again
-        fetch('/api/channel', {
-            method: 'POST',
-            headers: {
-                'Authorization': `${this.state.user.apiKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({name: 'New Room'}), // Example payload
-        })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Room created:', data);
-                // Optionally, fetch the updated list of rooms here
-                this.fetchRooms();
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        // Use props.onLogin, not props.handleLogin
+        props.onLogin(username, password)
+            .then(success => {
+                if (!success) {
+                    setErrorMessage('Login error message');
+                }
             })
             .catch(error => {
-                console.error('Error creating room:', error);
+                console.error('Error during login:', error);
+                setErrorMessage('An error occurred. Please try again.');
             });
     };
 
-    fetchRooms = () => {
+
+    // Placeholder function for fetching chat channels
+    const fetchChannels = async () => {
+        // Implement logic to fetch channels
+        // Update channels state with the fetched data
+    };
+
+    React.useEffect(() => {
+        const apiKey = localStorage.getItem('api_key');
+        console.log("apikey in App useEffect", apiKey);
+        if (apiKey) {
+            fetch('/api/profile', {
+                method: 'GET',
+                headers: {
+                    'Authorization': apiKey,
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch user data');
+                    }
+                    return response.json();
+                })
+                .then(userData => {
+                    setUser({
+                        id: userData.id,
+                        username: userData.username,
+                        // Include any other user fields you need
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching user data:', error);
+                    // Handle error, e.g., by clearing localStorage if the API key is invalid
+                });
+        }
+    }, []);
+
+
+    return (
+        <BrowserRouter>
+            <div>
+                <Switch>
+                    <Route path="/login">
+                        <LoginForm handleLogin={handleLogin}/>
+                    </Route>
+                    <Route path="/profile">
+                        <Profile user={user} setUser={setUser}/>
+                    </Route>
+                    <Route path="/channel/:id">
+                        <ChatChannel user={user} channels={channels}/>
+                    </Route>
+                    <Route exact path="/">
+                        <SplashScreen user={user} apikey={apikey}/>
+                    </Route>
+                    <Route path="*">
+                        <div>Page not found</div>
+                    </Route>
+                </Switch>
+            </div>
+        </BrowserRouter>
+    );
+}
+
+// Refactor other components as needed to work with react-router-dom
+
+// SplashScreen component changes
+function SplashScreen(props) {
+    const [rooms, setRooms] = React.useState([]);
+    const [isLoading, setIsLoading] = React.useState(true);
+    const apiKey = localStorage.getItem('api_key');
+    const history = useHistory();
+    console.log("props", props);
+    const handleLoginClick = () => {
+        history.push('/login');
+    };
+
+    const onSignupClick = () => {
+        history.push('/profile');
+    };
+
+    React.useEffect(() => {
+        fetchRooms();
+    }, []); // The empty array ensures this effect runs only once after the initial render
+
+    function fetchRooms() {
+
+        console.log("splashScreen apiKey", apiKey);
+        if (!apiKey) {
+            console.error("API key not found.");
+            setIsLoading(false);
+            return;
+        }
+
         fetch('/api/channel', {
             method: 'GET',
             headers: {
-                'Authorization': `${this.state.user ? this.state.user.apiKey : ''}`,
+                'Authorization': apiKey,
                 'Content-Type': 'application/json',
             },
         })
             .then(response => {
                 if (!response.ok) {
-                    // Handle HTTP errors
                     throw new Error('Network response was not ok');
                 }
                 return response.json();
             })
             .then(data => {
-                this.setState({rooms: data}); // Assuming the API response is the array of rooms
+                setRooms(data);
+                setIsLoading(false);
             })
             .catch(error => {
-                console.error('Error fetching rooms:', error);
-                // Handle fetch error (e.g., network error, authorization failure)
+                console.error('There has been a problem with your fetch operation:', error);
+                setIsLoading(false);
             });
     }
 
-    renderPage() {
-        const {currentPage, user, channels} = this.state;
-
-        switch (currentPage) {
-            case 'splash':
-                return (
-                    <SplashScreen
-                        user={user}
-                        channels={channels}
-                        onLoginClick={() => this.setState({currentPage: 'login'})}
-                        onSignupClick={() => this.setState({currentPage: 'signup'})}
-                        onCreateRoomClick={this.onCreateRoomClick}
-                    />
-                );
-
-            case 'login':
-                return (
-                    <LoginForm
-                        handleLogin={this.handleLogin}
-                        onSignupClick={() => this.setState({currentPage: 'signup'})}
-                    />
-                );
-
-            case 'signup':
-                // Assuming you have a SignupForm component
-                return (
-                    <SignupForm
-                        handleSignup={this.handleSignup}
-                        onLoginClick={() => this.setState({currentPage: 'login'})}
-                    />
-                );
-
-            case 'profile':
-                return (
-                    <Profile
-                        user={user}
-                        handleLogout={this.handleLogout}
-                    />
-                );
-
-            case 'createRoom':
-                // Assuming you have a CreateRoom component or method
-                // This case could be handled within the SplashScreen or a dedicated page
-                return (
-                    <div>Create Room Page (to be implemented)</div>
-                );
-
-            default:
-                // Optionally handle unknown pages
-                return <NotFoundPage/>;
-        }
-
+    function navigateToChannel(channelId) {
+        props.navigateTo('channel', channelId);
     }
 
-    render() {
-        return (
-            <div>
-                {this.renderPage()}
-            </div>
-        );
-    }
-}
-
-// TODO: Splash component
-function SplashScreen({user, rooms, onLoginClick, onSignupClick, onCreateRoomClick}) {
     return (
         <div className="splash container">
             <div className="splashHeader">
                 <div className="loginHeader">
-                    {user ? (
+                    {props.user ? (
                         <div className="loggedIn">
-                            <a className="welcomeBack">
-                                <span className="username">Welcome back, {user.username}!</span>
-                                <span className="material-symbols-outlined md-18">person</span>
-                            </a>
+                            <span className="username">Welcome back, {props.user.username}!</span>
+                            <span className="material-symbols-outlined md-18">person</span>
                         </div>
                     ) : (
-                        <div className="loggedOut">
-                            <a onClick={onLoginClick}>Login</a>
-                        </div>
+                        <button onClick={handleLoginClick}>Login</button>
                     )}
                 </div>
             </div>
@@ -257,10 +217,9 @@ function SplashScreen({user, rooms, onLoginClick, onSignupClick, onCreateRoomCli
                     <img id="tv" src="/static/tv.jpeg" alt="TV"/>
                     <img id="popcorn" src="/static/popcorn.png" alt="Popcorn"/>
                 </div>
-                <h1>Watch Party</h1>
-                <h2>2</h2>
-                {user ? (
-                    <button className="create" onClick={onCreateRoomClick}>Create a Room</button>
+                <h1>Slack</h1>
+                {props.user ? (
+                    <button className="create" onClick={props.onCreateRoomClick}>Create a Room</button>
                 ) : (
                     <button className="signup" onClick={onSignupClick}>Signup</button>
                 )}
@@ -268,10 +227,12 @@ function SplashScreen({user, rooms, onLoginClick, onSignupClick, onCreateRoomCli
 
             <h2>Rooms</h2>
             <div className="rooms">
-                {rooms && rooms.length > 0 ? (
+                {!isLoading && rooms.length > 0 ? (
                     <div className="roomList">
-                        {rooms.map((room, index) => (
-                            <div key={index}>{room.name}</div>
+                        {rooms.map((room) => (
+                            <button key={room.id} onClick={() => navigateToChannel(room.id)}>
+                                {room.name}
+                            </button>
                         ))}
                     </div>
                 ) : (
@@ -283,205 +244,144 @@ function SplashScreen({user, rooms, onLoginClick, onSignupClick, onCreateRoomCli
 }
 
 
-// TODO: LoginForm component
-class LoginForm extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            username: '',
-            password: '',
-            errorMessage: '', // Used to display login errors
-        };
-    }
+// LoginForm component changes
+function LoginForm(props) {
+    const [username, setUsername] = React.useState('');
+    const [password, setPassword] = React.useState('');
+    const [errorMessage, setErrorMessage] = React.useState('');
+    const history = useHistory();
 
-    handleInputChange = (event) => {
+    const handleInputChange = (event) => {
         const {name, value} = event.target;
-        this.setState({[name]: value});
+        if (name === 'username') {
+            setUsername(value);
+        } else if (name === 'password') {
+            setPassword(value);
+        }
     };
 
-    handleSubmit = (event) => {
+    const handleSubmit = (event) => {
         event.preventDefault();
-        const {username, password} = this.state;
 
-        this.props.handleLogin(username, password)
+        props.handleLogin(username, password)
             .then(success => {
                 if (!success) {
-                    this.setState({errorMessage: 'Oops, that username and password don\'t match any of our users!'});
+                    setErrorMessage('Oops, that username and password don\'t match any of our users!');
+                } else {
+                    history.push('/');
+                    console.log("login successfully")
                 }
             })
             .catch(error => {
-                this.setState({errorMessage: 'An error occurred. Please try again.'});
+                console.error('Login error:', error);
+                setErrorMessage('An error occurred. Please try again.');
             });
     };
 
-    render() {
-        const {username, password, errorMessage} = this.state;
-
-        return (
-            <div className="login"> {/* This div is shown only on "/login" route */}
-                <div className="header">
-                    <h2><a href=" ">Watch Party</a></h2>
-                    <h4>2</h4>
-                </div>
-                <div className="clip">
-                    <div className="auth container">
-                        <h3>Enter your username and password to log in:</h3>
-                        <form onSubmit={this.handleSubmit} className="alignedForm login">
-                            <label htmlFor="username">Username</label>
-                            <input
-                                type="text"
-                                name="username"
-                                value={username}
-                                onChange={this.handleInputChange}
-                                required
-                            />
-                            <div></div>
-                            <label htmlFor="password">Password</label>
-                            <input
-                                type="password"
-                                name="password"
-                                value={password}
-                                onChange={this.handleInputChange}
-                                required
-                            />
-                            <button type="submit">Login</button>
-                        </form>
-                        {errorMessage && (
-                            <div className="failed"> {/* Show this div only on failed login attempts */}
-                                <div className="message">
-                                    {errorMessage}
-                                </div>
-                                <button type="button" onClick={this.props.onNavigateSignup}>Create a new Account
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-}
-
-// TODO: Profile component
-class Profile extends React.Component {
-    handleLogout = () => {
-        // Call the logout function provided by the parent component
-        this.props.handleLogout();
-    };
-
-    render() {
-        const {user} = this.props;
-
-        return (
-            <div className="profile">
-                <h2>Profile</h2>
-                <p>Welcome, {user.username}!</p>
-                {/* Optionally include more user details here */}
-                <button onClick={this.handleLogout}>Log out</button>
-            </div>
-        );
-    }
-}
-
-// TODO: Channel component
-class Channel extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            messages: [], // Messages will be stored here
-            newMessage: '', // The new message to send
-        };
-    }
-
-    componentDidMount() {
-        this.fetchMessages();
-    }
-
-    fetchMessages = () => {
-        // Replace with your API call to fetch messages for the current channel
-        fetch(`/api/channel/${this.props.channelId}/messages`)
-            .then(response => response.json())
-            .then(data => this.setState({messages: data}))
-            .catch(error => console.error('Error fetching messages:', error));
-    };
-
-    handleInputChange = (event) => {
-        this.setState({newMessage: event.target.value});
-    };
-
-    handleSubmit = (event) => {
-        event.preventDefault();
-        const {newMessage} = this.state;
-        const {channelId} = this.props;
-
-        // Replace with your API call to post a new message
-        fetch(`/api/channel/${channelId}/messages`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.props.user.apiKey}`, // Assuming you use API keys for authorization
-            },
-            body: JSON.stringify({body: newMessage}),
-        })
-            .then(response => {
-                if (response.ok) {
-                    this.setState({newMessage: ''}); // Clear input after sending
-                    this.fetchMessages(); // Fetch messages again to show the new one
-                } else {
-                    console.error('Failed to send message');
-                }
-            })
-            .catch(error => console.error('Error posting message:', error));
-    };
-
-    render() {
-        const {messages, newMessage} = this.state;
-
-        return (
-            <div className="channel">
-                <h2>Channel</h2>
-                <div className="messages">
-                    {messages.map((message, index) => (
-                        <div key={index} className="message">
-                            <strong>{message.sender}:</strong> {message.text}
-                        </div>
-                    ))}
-                </div>
-                <form onSubmit={this.handleSubmit}>
-                    <input
-                        type="text"
-                        value={newMessage}
-                        onChange={this.handleInputChange}
-                        placeholder="Type a message..."
-                    />
-                    <button type="submit">Send</button>
-                </form>
-            </div>
-        );
-    }
-}
-
-// TODO: NOT found page
-function NotFoundPage() {
     return (
-        <div className="notFound">
+        <div className="login">
             <div className="header">
-                <h2><a href="/">Watch Party</a></h2>
+                <h2><a href="#">Watch Party</a></h2>
                 <h4>2</h4>
             </div>
             <div className="clip">
-                <div className="container">
-                    <h1>404</h1>
-                    <div className="message">
-                        <h2>Oops, we can't find that page!</h2>
-                        <a href="/">Let's go home and try again.</a>
+                <div className="auth container">
+                    <h3>Enter your username and password to log in:</h3>
+                    <form onSubmit={handleSubmit} className="alignedForm login">
+                        <label htmlFor="username">Username</label>
+                        <input
+                            type="text"
+                            name="username"
+                            value={username}
+                            onChange={handleInputChange}
+                            required
+                        />
+                        <div></div>
+                        <label htmlFor="password">Password</label>
+                        <input
+                            type="password"
+                            name="password"
+                            value={password}
+                            onChange={handleInputChange}
+                            required
+                        />
+                        <button type="submit">Login</button>
+                    </form>
+                    <div className="failed">
+                        <button type="button" onClick={props.onSignupClick}>Create a new Account</button>
                     </div>
+
+                    {errorMessage && (
+                        <div className="failed">
+                            <div className="message">
+                                {errorMessage}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
 }
 
-const rootContainer = document.getElementById("root");
+
+// Profile component changes
+function Profile({ user, setUser }) { // Assuming setUser is passed as a prop
+    const history = useHistory();
+
+    const handleLogout = () => {
+        setUser(null); // Use setUser directly, no "this"
+        localStorage.removeItem('api_key'); // Ensure key matches what's used elsewhere
+        history.push("/login"); // Redirect to the login page after logout
+    };
+
+    // Redirect to login page if there's no API key in localStorage
+    React.useEffect(() => {
+        if (!localStorage.getItem('api_key')) { // Ensure key matches what's used elsewhere
+            history.push('/login');
+        }
+    }, [history]);
+
+    return (
+        <div className="profile">
+            <div className="header">
+                <h2><a onClick={() => history.push('/')}>Watch Party</a></h2> {/* Directly use history.push */}
+                <h4>Profile Page</h4>
+            </div>
+            <div className="profile-info">
+                <h3>User Profile</h3>
+                {user ? (
+                    <div>
+                        <p><strong>Username:</strong> {user.username}</p>
+                        {/* Display more user details here */}
+                    </div>
+                ) : (
+                    <p>No user information found.</p>
+                )}
+                <button onClick={handleLogout} className="logout-button">Log out</button>
+            </div>
+        </div>
+    );
+}
+
+
+
+// ChatChannel component changes
+// Extract channelId from URL params using useParams hook
+function ChatChannel() {
+    let {id} = useParams();
+    let history = useHistory();
+
+    const goToSplash = () => {
+        history.push('/');
+    };
+
+    // Use the 'id' variable as the channelId in your component logic
+
+    // Other component logic remains the same
+}
+
+// Render your App component as before
+const rootContainer = document.getElementById('root');
 const root = ReactDOM.createRoot(rootContainer);
 root.render(<App/>);

@@ -42,7 +42,7 @@ create table user_message_views (
     PRIMARY KEY (user_id, channel_id)
 );
 
-INSERT INTO users (name, password, api_key) VALUES ('user1', '123456', null), ('user2', '654321', null);
+INSERT INTO users (name, password, api_key) VALUES ('user1', '123456', 'abcdef'), ('user2', '654321', 'fedcba');
 
 INSERT INTO channels (name) VALUES ('General'), ('Story');
 
