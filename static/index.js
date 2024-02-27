@@ -9,7 +9,7 @@ const {
 // Refactor App component to use BrowserRouter and Route
 function App() {
     const [user, setUser] = React.useState(null);
-    const [apikey, setapikey] = React.useState(null);
+    const [apikey, setapikey] = React.useState(localStorage.getItem('api_key'));
     const [channels, setChannels] = React.useState([]);
 
     const handleLogin = (username, password) => {
@@ -126,7 +126,7 @@ function App() {
                         <Profile user={user} setUser={setUser}/>
                     </Route>
                     <Route path="/channel/:id">
-                        <ChatChannel user={user} channels={channels}/>
+                        <ChatChannel user={user} apiKey={apikey}/>
                     </Route>
                     <Route exact path="/">
                         <SplashScreen user={user} apikey={apikey}/>
@@ -199,7 +199,7 @@ function SplashScreen(props) {
     }
 
     function navigateToChannel(channelId) {
-        props.navigateTo('channel', channelId);
+        history.push(`/channel/${channelId}`);
     }
 
     return (
@@ -471,17 +471,124 @@ function Profile({user, setUser}) {
 
 // ChatChannel component changes
 // Extract channelId from URL params using useParams hook
-function ChatChannel() {
-    let {id} = useParams();
-    let history = useHistory();
+function ChatChannel({apiKey}) {
+  const { id } = ReactRouterDOM.useParams(); // Assuming you're using react-router-dom v5 for routing
+  const [room, setRoom] = React.useState({ name: '' });
+  const [messages, setMessages] = React.useState([]);
+  const [newMessage, setNewMessage] = React.useState('');
+  const [editMode, setEditMode] = React.useState(false);
+  const [editedRoomName, setEditedRoomName] = React.useState('');
 
-    const goToSplash = () => {
-        history.push('/');
-    };
+  React.useEffect(() => {
+    // Fetch room details
+    fetch(`/api/channel/${id}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': apiKey,
+            'Content-Type': 'application/json'
+        }
+    })
+      .then(response => response.json())
+      .then(data => {
+        setRoom({ name: data.name });
+        setEditedRoomName(data.name); // Pre-fill with current room name
+      })
+      .catch(error => console.error("Failed to fetch room details:", error));
 
-    // Use the 'id' variable as the channelId in your component logic
+    // Fetch messages for this room
+    fetch(`/api/channel/${id}/messages`, {
+        method: 'GET',
+        headers: {
+            'Authorization': apiKey,
+            'Content-Type': 'application/json'
+        }
+    })
+      .then(response => response.json())
+      .then(data => setMessages(data))
+      .catch(error => console.error("Failed to fetch messages:", error));
+  }, [id]); // Re-run the effect if the room ID changes
 
-    // Other component logic remains the same
+  const handleEditClick = () => {
+    setEditMode(true);
+  };
+
+  const handleUpdateRoomName = () => {
+    // API call to update the room name
+    fetch(`/api/channel/${id}`, {
+      method: 'POST', // Or 'PUT', depending on your API
+      headers: { 'Authorization': apiKey,
+                 'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: editedRoomName }),
+    })
+    .then(() => {
+      setRoom({ name: editedRoomName });
+      setEditMode(false);
+    })
+    .catch(error => console.error("Failed to update room name:", error));
+  };
+
+  const handlePostMessage = (event) => {
+    event.preventDefault(); // Prevent form submission from reloading the page
+    // API call to post a new message
+    fetch(`/api/channel/${id}/messages`, {
+      method: 'POST',
+      headers: { 'Authorization': apiKey,
+                 'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ body: newMessage }),
+    })
+    .then(() => {
+      setMessages([...messages, { body: newMessage }]); // Optimistically update the UI
+      setNewMessage(''); // Clear input field
+    })
+    .catch(error => console.error("Failed to post message:", error));
+  };
+
+  return (
+    <div className="room">
+      <div className="header">
+        <h2><a href="/">Watch Party</a></h2>
+        <h4>2</h4>
+        <div className="roomDetail">
+          {editMode ? (
+            <div>
+              <h3>
+                Chatting in <input value={editedRoomName} onChange={(e) => setEditedRoomName(e.target.value)} />
+                <button onClick={handleUpdateRoomName}>Update</button>
+              </h3>
+            </div>
+          ) : (
+            <div className="displayRoomName">
+              <h3>
+                Chatting in <strong>{room.name}</strong>
+                <a onClick={handleEditClick}><span className="material-symbols-outlined md-18">edit</span></a>
+              </h3>
+            </div>
+          )}
+          Invite users to this chat at:
+          <a href={`/channel/${id}`}>/channel/{id}</a>
+        </div>
+      </div>
+
+      <div className="clip">
+        <div className="container">
+          <div className="chat">
+            <form onSubmit={handlePostMessage}>
+              <label htmlFor="comment">What do you have to say?</label>
+              <textarea name="comment" value={newMessage} onChange={(e) => setNewMessage(e.target.value)}></textarea>
+              <button type="submit" className="post_room_messages">Post</button>
+            </form>
+            <div className="messages">
+              {messages.map((message, index) => (
+                <div key={index}>{message.body}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Render your App component as before
