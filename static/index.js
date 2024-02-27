@@ -155,7 +155,12 @@ function SplashScreen(props) {
 
     const onSignupClick = () => {
         history.push('/profile');
+        // TODO
     };
+
+    const onProfileClick = () => {
+        history.push('/profile');
+    }
 
     React.useEffect(() => {
         fetchRooms();
@@ -202,7 +207,7 @@ function SplashScreen(props) {
             <div className="splashHeader">
                 <div className="loginHeader">
                     {props.user ? (
-                        <div className="loggedIn">
+                        <div className="loggedIn" onClick={onProfileClick}>
                             <span className="username">Welcome back, {props.user.username}!</span>
                             <span className="material-symbols-outlined md-18">person</span>
                         </div>
@@ -325,45 +330,143 @@ function LoginForm(props) {
 }
 
 
-// Profile component changes
-function Profile({ user, setUser }) { // Assuming setUser is passed as a prop
+function Profile({user, setUser}) {
     const history = useHistory();
 
+    // Assuming useState hook is used for form fields
+    const [username, setUsername] = React.useState(user ? user.username : '');
+    const [password, setPassword] = React.useState('');
+    const [repeatPassword, setRepeatPassword] = React.useState('');
+    const [error, setError] = React.useState('');
+
     const handleLogout = () => {
-        setUser(null); // Use setUser directly, no "this"
+        setUser(null);
         localStorage.removeItem('api_key'); // Ensure key matches what's used elsewhere
-        history.push("/login"); // Redirect to the login page after logout
+        history.push("/login");
     };
 
-    // Redirect to login page if there's no API key in localStorage
+    const handleUpdateUsername = () => {
+        const apiKey = localStorage.getItem('api_key');
+        fetch('/api/profile', {
+            method: 'POST',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({name: username}) // Assuming the API expects the new username under the key 'name'
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to update username');
+                }
+                return response.json();
+            })
+            .then(updatedUser => {
+                console.log('Username updated to', updatedUser.username);
+                setUser(updatedUser); // Update the user state with the new user information
+                setUsername(updatedUser.username); // Update the username state to reflect the change
+            })
+            .catch(error => {
+                console.error('Error updating username:', error);
+                setError('Failed to update username');
+            });
+    };
+
+    const handleUpdatePassword = () => {
+        if (password !== repeatPassword) {
+            setError("Passwords don't match");
+            return;
+        }
+        const apiKey = localStorage.getItem('api_key');
+        fetch('/api/profile', {
+            method: 'POST',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({password: password}) // Assuming the API expects the new password under the key 'password'
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to update password');
+                }
+                console.log('Password updated successfully');
+                // Optionally, clear the password fields after successful update
+                setPassword('');
+                setRepeatPassword('');
+            })
+            .catch(error => {
+                console.error('Error updating password:', error);
+                setError('Failed to update password');
+            });
+    };
+
+
+    const goToSplash = () => {
+        history.push('/');
+    };
+
     React.useEffect(() => {
-        if (!localStorage.getItem('api_key')) { // Ensure key matches what's used elsewhere
+        const apiKey = localStorage.getItem('api_key');
+        if (!apiKey) {
             history.push('/login');
+        } else {
+            fetch('/api/profile', {
+                method: 'GET',
+                headers: {
+                    'Authorization': apiKey,
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch user data');
+                    }
+                    return response.json();
+                })
+                .then(userData => {
+                    setUsername(userData.username);
+                    setPassword(userData.password); // Note: Storing and displaying passwords in the client-side is not recommended
+                    setRepeatPassword(userData.password);
+                })
+                .catch(error => {
+                    console.error('Error fetching user data:', error);
+                });
         }
     }, [history]);
 
     return (
         <div className="profile">
             <div className="header">
-                <h2><a onClick={() => history.push('/')}>Watch Party</a></h2> {/* Directly use history.push */}
+                <h2><a className="go_to_splash_page" onClick={goToSplash}>Slack</a ></h2>
                 <h4>Profile Page</h4>
             </div>
-            <div className="profile-info">
-                <h3>User Profile</h3>
-                {user ? (
-                    <div>
-                        <p><strong>Username:</strong> {user.username}</p>
-                        {/* Display more user details here */}
+            <div className="clip">
+                <div className="auth container">
+                    <h2>Welcome to Watch Party!</h2>
+                    <div className="alignedForm">
+                        <label htmlFor="username">Username: </label>
+                        <input name="username" value={username} onChange={(e) => setUsername(e.target.value)}/>
+                        <button className="update_name" onClick={handleUpdateUsername}>update</button>
+
+                        <label htmlFor="password">Password: </label>
+                        <input type="password" name="password" value={password}
+                               onChange={(e) => setPassword(e.target.value)}/>
+                        <button className="update_password" onClick={handleUpdatePassword}>update</button>
+
+                        <label htmlFor="repeatPassword">Repeat: </label>
+                        <input type="password" name="repeatPassword" value={repeatPassword}
+                               onChange={(e) => setRepeatPassword(e.target.value)}/>
+                        {error && <div className="error">{error}</div>}
+
+                        <button className="exit goToSplash" onClick={goToSplash}>Cool, let's go!</button>
+                        <button className="exit logout" onClick={handleLogout}>Log out</button>
                     </div>
-                ) : (
-                    <p>No user information found.</p>
-                )}
-                <button onClick={handleLogout} className="logout-button">Log out</button>
+                </div>
             </div>
         </div>
     );
 }
-
 
 
 // ChatChannel component changes
