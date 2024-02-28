@@ -83,6 +83,7 @@ function App() {
 // SplashScreen component changes
 function SplashScreen(props) {
     const [rooms, setRooms] = React.useState([]);
+    const [unreadCounts, setUnreadCounts] = React.useState({});
     const [isLoading, setIsLoading] = React.useState(true);
     const apiKey = localStorage.getItem('api_key');
     const history = useHistory();
@@ -208,9 +209,29 @@ function SplashScreen(props) {
             });
     }
 
+    const fetchUnreadMessageCounts = () => {
+        fetch('/api/user/unread-messages', {
+            method: 'GET',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                const counts = data.reduce((acc, curr) => {
+                    acc[curr.channel_id] = curr.unread_count;
+                    return acc;
+                }, {});
+                setUnreadCounts(counts);
+            })
+            .catch((error) => console.error('Failed to fetch unread messages count:', error));
+    };
+
     React.useEffect(() => {
         fetchRooms();
         fetchUserInfo();
+        fetchUnreadMessageCounts();
     }, []); // The empty array ensures this effect runs only once after the initial render
 
     const handleLoginClick = () => {
@@ -260,6 +281,7 @@ function SplashScreen(props) {
                         {rooms.map((room) => (
                             <button key={room.id} onClick={() => navigateToChannel(room.id)}>
                                 {room.name}
+                                {unreadCounts[room.id] !== 0 && <strong>({unreadCounts[room.id]} unread messages)</strong>}
                             </button>
                         ))}
                     </div>
@@ -509,6 +531,58 @@ function ChatChannel() {
     const [messages, setMessages] = React.useState([]); // State to hold messages
     const [newMessage, setNewMessage] = React.useState(''); // State for the new message input
 
+    const fetchRoomDetailsAndUpdateLastViewed = () => {
+        const apiKey = localStorage.getItem('api_key');
+
+        // Fetch room details
+        fetch(`/api/channel/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            setRoom({ name: data.name });
+        })
+        .catch(error => console.error("Failed to fetch room details:", error));
+
+        // Fetch messages for the room and update last viewed message
+        fetch(`/api/channel/${id}/messages`, {
+            method: 'GET',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            setMessages(data);
+            if (data.length > 0) {
+                const lastMessageId = data[data.length - 1].id; // Assuming 'id' is the message ID
+                // Update last viewed message
+                fetch(`/api/channel/${id}/last-viewed`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': apiKey,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ last_message_id_seen: lastMessageId }),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to update last viewed message');
+                    }
+                    return response.json();
+                })
+                .then(() => console.log('Last viewed message updated successfully'))
+                .catch(error => console.error('Failed to update last viewed message:', error));
+            }
+        })
+        .catch(error => console.error("Failed to fetch messages:", error));
+    };
+
     const handleEditClick = () => {
         setIsEditing(true); // Enable edit mode
     };
@@ -549,6 +623,7 @@ function ChatChannel() {
         // Fetch room details
         fetch_room_detail();
         fetch_messages();
+        fetchRoomDetailsAndUpdateLastViewed();
         // const room_interval = setInterval(fetch_room_detail, 500);
         const message_interval = setInterval(fetch_messages, 500);
 

@@ -263,7 +263,7 @@ def messages(channel_id):
 
     if request.method == 'GET':
         print("get messages")  # For debugging
-        messages = query_db('SELECT * FROM messages LEFT JOIN users ON messages.user_id = users.id WHERE channel_id = ?',
+        messages = query_db('SELECT * FROM messages LEFT JOIN users ON messages.user_id = users.id WHERE channel_id = ? AND replies_to IS NULL',
                             [channel_id])
         if messages:
             return jsonify([dict(m) for m in messages]), 200
@@ -282,3 +282,71 @@ def messages(channel_id):
             'status': 'fail',
             'error': 'Invalid method. Only takes POST and GET methods in the request'
         }), 400
+
+@app.route('/api/channel/<int:channel_id>/last-viewed', methods=['POST'])
+def update_last_message_seen(channel_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Missing API key in request header'
+        }), 400
+
+    user = query_db('SELECT * FROM users WHERE api_key = ?', [api_key], one=True)
+    if not user:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Invalid API key'
+        }), 403
+
+    print("update last message seen")  # For debugging
+    last_message_seen = request.get_json().get('last_message_id_seen')
+    if not all([channel_id, last_message_seen]):
+        return jsonify({'status': 'fail', 'error': 'Missing required fields'})
+
+    existing_view = query_db('SELECT * FROM user_message_views WHERE user_id = ? AND channel_id = ?',
+                             [user['id'], channel_id], one=True)
+    if existing_view:
+        query_db('UPDATE user_message_views SET last_message_seen = ? WHERE user_id = ? AND channel_id = ?',
+                 [last_message_seen, user['id'], channel_id])
+    else:
+        query_db('INSERT INTO user_message_views (user_id, channel_id, last_message_seen) VALUES (?, ?, ?)',
+                 [user['id'], channel_id, last_message_seen])
+
+    return jsonify({'status': 'success',
+                    'message': 'User message view updated successfully'}), 200
+
+
+@app.route('/api/user/unread-messages', methods=['GET'])
+def get_unread_messages_count():
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Missing API key in request header'
+        }), 400
+
+    user = query_db('SELECT * FROM users WHERE api_key = ?', [api_key], one=True)
+    if not user:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Invalid API key'
+        }), 403
+
+    channels = query_db('select * from channels')
+    unread_messages_counts = []
+
+    for channel in channels:
+        last_viewed_message_id = query_db('select last_message_seen from user_message_views where user_id = ? and channel_id = ?',
+                                          [user['id'], channel['id']], one=True)
+
+        if last_viewed_message_id:
+            unread_count = query_db('select count(*) as count from messages where channel_id = ? and id > ? and replies_to is null',
+                                    [channel['id'], last_viewed_message_id['last_message_seen']], one=True)
+        else:
+            unread_count = query_db('select count(*) as count from messages where channel_id = ? and replies_to is null',
+                                    [channel['id']], one=True)
+
+        unread_messages_counts.append({'channel_id': channel['id'], 'unread_count': unread_count['count']})
+
+    return jsonify(unread_messages_counts), 200
