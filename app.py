@@ -187,7 +187,7 @@ def channel():
         if channels:
             return jsonify([dict(r) for r in channels]), 200
         else:
-            return {}, 200
+            return jsonify([]), 200
 
     elif request.method == 'POST':
         print("create channel")  # For debugging
@@ -268,7 +268,7 @@ def messages(channel_id):
         if messages:
             return jsonify([dict(m) for m in messages]), 200
         else:
-            return {}, 200
+            return jsonify([]), 200
 
     elif request.method == 'POST':
         print("post message")  # For debugging

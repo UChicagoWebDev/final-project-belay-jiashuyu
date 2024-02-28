@@ -514,6 +514,7 @@ function ChatChannel() {
                 console.log("Fetched messages: ", data); // Log the fetched data for debugging
                 setMessages(data);
             })
+            .catch(error => console.error("Failed to fetch messages:", error));
     }
 
     React.useEffect(() => {
