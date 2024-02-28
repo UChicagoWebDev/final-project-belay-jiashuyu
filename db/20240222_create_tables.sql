@@ -48,6 +48,7 @@ INSERT INTO channels (name) VALUES ('General'), ('Story');
 
 INSERT INTO messages (user_id, channel_id, body, replies_to) VALUES
 (1, 1, 'Hello everyone in General!', null),
-(2, 2, 'Any new stories for today?', null);
+(2, 2, 'Any new stories for today?', null),
+(2, 1, 'Hi there! This is an reply.', 1);
 
 INSERT INTO reactions (message_id, user_id, emoji) VALUES (1, 1, '😀'), (2, 2, '🧐');

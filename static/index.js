@@ -711,7 +711,6 @@ function ChatChannel() {
                                 <div key={index} className="message">
                                     <div className="author">{message.name} : </div>
                                     <div className="content">{message.body}</div>
-                                    <div></div>
                                 </div>
                             ))}
                         </div>
