@@ -4,12 +4,12 @@ const {
     Route,
     Link,
     useHistory,
+    useParams
 } = ReactRouterDOM;
 
 // Refactor App component to use BrowserRouter and Route
 function App() {
     const [user, setUser] = React.useState(null);
-    const [apikey, setapikey] = React.useState(localStorage.getItem('api_key'));
     const [channels, setChannels] = React.useState([]);
 
     const handleLogin = (username, password) => {
@@ -40,7 +40,6 @@ function App() {
 
                 // Store the api_key in localStorage or another secure place for future requests
                 localStorage.setItem('api_key', data.api_key);
-                setapikey(localStorage.getItem('api_key'))
                 // Navigate to the splash page or another appropriate page upon login
                 // This can be done using the useHistory hook if this logic is inside a component or withRouter HOC
                 // For example: history.push('/');
@@ -54,67 +53,6 @@ function App() {
             });
     };
 
-
-    // Placeholder function for user logout
-    const handleLogout = () => {
-        setUser(null);
-        // Redirect to login page using useHistory hook in a component or withRouter HOC
-    };
-
-    const handleSubmit = (event) => {
-        event.preventDefault();
-        // Use props.onLogin, not props.handleLogin
-        props.onLogin(username, password)
-            .then(success => {
-                if (!success) {
-                    setErrorMessage('Login error message');
-                }
-            })
-            .catch(error => {
-                console.error('Error during login:', error);
-                setErrorMessage('An error occurred. Please try again.');
-            });
-    };
-
-
-    // Placeholder function for fetching chat channels
-    const fetchChannels = async () => {
-        // Implement logic to fetch channels
-        // Update channels state with the fetched data
-    };
-
-    React.useEffect(() => {
-        const apiKey = localStorage.getItem('api_key');
-        console.log("apikey in App useEffect", apiKey);
-        if (apiKey) {
-            fetch('/api/profile', {
-                method: 'GET',
-                headers: {
-                    'Authorization': apiKey,
-                    'Content-Type': 'application/json',
-                },
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch user data');
-                    }
-                    return response.json();
-                })
-                .then(userData => {
-                    setUser({
-                        id: userData.id,
-                        username: userData.username,
-                        // Include any other user fields you need
-                    });
-                })
-                .catch(error => {
-                    console.error('Error fetching user data:', error);
-                    // Handle error, e.g., by clearing localStorage if the API key is invalid
-                });
-        }
-    }, []);
-
-
     return (
         <BrowserRouter>
             <div>
@@ -126,10 +64,10 @@ function App() {
                         <Profile user={user} setUser={setUser}/>
                     </Route>
                     <Route path="/channel/:id">
-                        <ChatChannel user={user} apiKey={apikey}/>
+                        <ChatChannel/>
                     </Route>
                     <Route exact path="/">
-                        <SplashScreen user={user} apikey={apikey}/>
+                        <SplashScreen user={user} setUser={setUser}/>
                     </Route>
                     <Route path="*">
                         <div>Page not found</div>
@@ -149,22 +87,94 @@ function SplashScreen(props) {
     const apiKey = localStorage.getItem('api_key');
     const history = useHistory();
     console.log("props", props);
-    const handleLoginClick = () => {
-        history.push('/login');
+
+    const handleSignup = () => {
+        fetch('/api/signup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            // No need to send a body for the signup as it generates a new user automatically
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Signup failed');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("New user data:", data);
+
+                localStorage.setItem('api_key', data.api_key);
+                props.setUser({id: data.id, username: data.username, apiKey: data.api_key});
+                // Update user state with new user details, you might need to lift this state up or use context/redux if this component doesn't hold the user state
+                // setUser({ id: data.id, username: data.username, apiKey: data.api_key });
+
+                // Redirect to profile page
+                history.push('/profile');
+            })
+            .catch(error => {
+                console.error('Error during signup:', error);
+            });
     };
 
-    const onSignupClick = () => {
-        history.push('/profile');
-        // TODO
+    const handleCreateRoom = () => {
+        fetch('/api/channel', {
+            method: 'POST',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+            // Depending on your API, you might need to send a body.
+            // If your API generates a room name by default, you might not need to send a body.
+            // body: JSON.stringify({ name: 'New Room Name' }),
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to create a new room');
+                }
+                return response.json();
+            })
+            .then(newRoom => {
+                history.push(`/channel/${newRoom.id}`);
+                // Add the new room to the existing list of rooms
+                setRooms(prevRooms => [...prevRooms, newRoom]);
+
+            })
+            .catch(error => {
+                console.error('Error creating a new room:', error);
+            });
     };
 
-    const onProfileClick = () => {
-        history.push('/profile');
+
+    function fetchUserInfo() {
+        const apiKey = localStorage.getItem('api_key');
+        console.log("apikey in App useeffect", apiKey);
+        if (apiKey) {
+            fetch('/api/profile', {
+                method: 'GET',
+                headers: {
+                    'Authorization': apiKey,
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch user data');
+                    }
+                    return response.json();
+                })
+                .then(userData => {
+                    props.setUser({
+                        id: userData.id,
+                        username: userData.username,
+                        // Include any other user fields you need
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching user data:', error);
+                    // Handle error, e.g., by clearing localStorage if the API key is invalid
+                });
+        }
     }
-
-    React.useEffect(() => {
-        fetchRooms();
-    }, []); // The empty array ensures this effect runs only once after the initial render
 
     function fetchRooms() {
 
@@ -198,6 +208,19 @@ function SplashScreen(props) {
             });
     }
 
+    React.useEffect(() => {
+        fetchRooms();
+        fetchUserInfo();
+    }, []); // The empty array ensures this effect runs only once after the initial render
+
+    const handleLoginClick = () => {
+        history.push('/login');
+    };
+
+    const handleProfileClick = () => {
+        history.push('/profile');
+    }
+
     function navigateToChannel(channelId) {
         history.push(`/channel/${channelId}`);
     }
@@ -207,7 +230,7 @@ function SplashScreen(props) {
             <div className="splashHeader">
                 <div className="loginHeader">
                     {props.user ? (
-                        <div className="loggedIn" onClick={onProfileClick}>
+                        <div className="loggedIn" onClick={handleProfileClick}>
                             <span className="username">Welcome back, {props.user.username}!</span>
                             <span className="material-symbols-outlined md-18">person</span>
                         </div>
@@ -222,11 +245,11 @@ function SplashScreen(props) {
                     <img id="tv" src="/static/tv.jpeg" alt="TV"/>
                     <img id="popcorn" src="/static/popcorn.png" alt="Popcorn"/>
                 </div>
-                <h1>Slack</h1>
+                <h1>Belay</h1>
                 {props.user ? (
-                    <button className="create" onClick={props.onCreateRoomClick}>Create a Room</button>
+                    <button className="create" onClick={handleCreateRoom}>Create a Room</button>
                 ) : (
-                    <button className="signup" onClick={onSignupClick}>Signup</button>
+                    <button className="signup" onClick={handleSignup}>Signup</button>
                 )}
             </div>
 
@@ -283,11 +306,15 @@ function LoginForm(props) {
             });
     };
 
+    const goToSplash = () => {
+        history.push('/');
+    }
+
     return (
         <div className="login">
             <div className="header">
-                <h2><a href="#">Watch Party</a></h2>
-                <h4>2</h4>
+                <h2><a onClick={goToSplash}>Belay</a></h2>
+                <h4>Login Page</h4>
             </div>
             <div className="clip">
                 <div className="auth container">
@@ -365,6 +392,7 @@ function Profile({user, setUser}) {
                 console.log('Username updated to', updatedUser.username);
                 setUser(updatedUser); // Update the user state with the new user information
                 setUsername(updatedUser.username); // Update the username state to reflect the change
+                alert("Username has been updated!");
             })
             .catch(error => {
                 console.error('Error updating username:', error);
@@ -394,6 +422,7 @@ function Profile({user, setUser}) {
                 // Optionally, clear the password fields after successful update
                 setPassword('');
                 setRepeatPassword('');
+                alert("Password has been updated!");
             })
             .catch(error => {
                 console.error('Error updating password:', error);
@@ -438,7 +467,7 @@ function Profile({user, setUser}) {
     return (
         <div className="profile">
             <div className="header">
-                <h2><a className="go_to_splash_page" onClick={goToSplash}>Slack</a></h2>
+                <h2><a className="go_to_splash_page" onClick={goToSplash}>Belay</a></h2>
                 <h4>Profile Page</h4>
             </div>
             <div className="clip">
@@ -472,14 +501,13 @@ function Profile({user, setUser}) {
 // ChatChannel component changes
 // Extract channelId from URL params using useParams hook
 function ChatChannel() {
-    const {id} = ReactRouterDOM.useParams(); // Get the channel ID from the URL
+    const {id} = useParams(); // Get the channel ID from the URL
     const history = useHistory();
     const [room, setRoom] = React.useState({name: ''}); // State to hold room details
     const [isEditing, setIsEditing] = React.useState(false); // State to toggle edit mode
     const [newRoomName, setNewRoomName] = React.useState(''); // State for the new room name input
     const [messages, setMessages] = React.useState([]); // State to hold messages
     const [newMessage, setNewMessage] = React.useState(''); // State for the new message input
-    const [userName, setUserName] = React.useState({name: ''});
 
     const handleEditClick = () => {
         setIsEditing(true); // Enable edit mode
@@ -570,8 +598,7 @@ function ChatChannel() {
     return (
         <div className="channel">
             <div className="header">
-                <h2><a className="go_to_splash_page" onClick={goToSplash}>Watch Party</a ></h2>
-                <h4>2</h4>
+                <h2><a className="go_to_splash_page" onClick={goToSplash}>Belay</a ></h2>
                 <div className="channelDetail">
                     {!isEditing && room ? (
                         <div className="displayRoomName">
