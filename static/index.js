@@ -531,22 +531,8 @@ function ChatChannel() {
     const [messages, setMessages] = React.useState([]); // State to hold messages
     const [newMessage, setNewMessage] = React.useState(''); // State for the new message input
 
-    const fetchRoomDetailsAndUpdateLastViewed = () => {
+    const updateLastViewed = () => {
         const apiKey = localStorage.getItem('api_key');
-
-        // Fetch room details
-        fetch(`/api/channel/${id}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            setRoom({ name: data.name });
-        })
-        .catch(error => console.error("Failed to fetch room details:", error));
 
         // Fetch messages for the room and update last viewed message
         fetch(`/api/channel/${id}/messages`, {
@@ -623,7 +609,7 @@ function ChatChannel() {
         // Fetch room details
         fetch_room_detail();
         fetch_messages();
-        fetchRoomDetailsAndUpdateLastViewed();
+        updateLastViewed();
         // const room_interval = setInterval(fetch_room_detail, 500);
         const message_interval = setInterval(fetch_messages, 500);
 
@@ -662,6 +648,7 @@ function ChatChannel() {
             .then(() => {
                 setMessages([...messages, {body: newMessage}]); // Optimistically update the UI
                 setNewMessage(''); // Clear input field
+                updateLastViewed();
             })
             .catch(error => console.error("Failed to post message:", error));
     };
@@ -673,7 +660,7 @@ function ChatChannel() {
     return (
         <div className="channel">
             <div className="header">
-                <h2><a className="go_to_splash_page" onClick={goToSplash}>Belay</a ></h2>
+                <h2><a className="go_to_splash_page" onClick={goToSplash}>Belay</a></h2>
                 <div className="channelDetail">
                     {!isEditing && room ? (
                         <div className="displayRoomName">
@@ -711,6 +698,7 @@ function ChatChannel() {
                                 <div key={index} className="message">
                                     <div className="author">{message.name} : </div>
                                     <div className="content">{message.body}</div>
+                                    <button>Reply</button>
                                 </div>
                             ))}
                         </div>

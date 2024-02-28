@@ -350,3 +350,26 @@ def get_unread_messages_count():
         unread_messages_counts.append({'channel_id': channel['id'], 'unread_count': unread_count['count']})
 
     return jsonify(unread_messages_counts), 200
+
+
+@app.route('/api/message/<int:message_id>/reply', methods=['GET'])
+def get_reply(message_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Missing API key in request header'
+        }), 400
+
+    user = query_db('SELECT * FROM users WHERE api_key = ?', [api_key], one=True)
+    if not user:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Invalid API key'
+        }), 403
+
+    replies = query_db('SELECT * FROM messages WHERE replies_to = ?', [message_id], one=True)
+    if replies:
+        return jsonify([dict(r) for r in replies]), 200
+    else:
+        return jsonify([]), 200
