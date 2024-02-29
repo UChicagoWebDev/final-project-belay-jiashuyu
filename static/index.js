@@ -232,6 +232,8 @@ function SplashScreen(props) {
         fetchRooms();
         fetchUserInfo();
         fetchUnreadMessageCounts();
+        const counts_interval = setInterval(fetchUnreadMessageCounts, 1000);
+        return () => clearInterval(counts_interval);
     }, []); // The empty array ensures this effect runs only once after the initial render
 
     const handleLoginClick = () => {
@@ -590,31 +592,50 @@ function ChatChannel() {
     }
 
     const fetch_messages = () => {
-         fetch(`/api/channel/${id}/messages`, {
+        fetch(`/api/channel/${id}/messages`, {
             method: 'GET',
             headers: {
                 'Authorization': localStorage.getItem('api_key'),
                 'Content-Type': 'application/json'
             }
         })
-            .then(response => response.json())
-            .then(data => {
-                console.log("Fetched messages: ", data); // Log the fetched data for debugging
-                setMessages(data);
-            })
-            .catch(error => console.error("Failed to fetch messages:", error));
-    }
+        .then(response => response.json())
+        .then(messagesData => {
+            console.log("Fetched messages: ", messagesData); // Log the fetched data for debugging
+
+            // Fetch reactions for each message
+            const fetchReactionsPromises = messagesData.map(message =>
+                fetch(`/api/message/${message.id}/reaction`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': localStorage.getItem('api_key'),
+                        'Content-Type': 'application/json'
+                    }
+                }).then(response => response.json())
+            );
+
+            // Wait for all reactions to be fetched
+            Promise.all(fetchReactionsPromises).then(reactionsData => {
+                const messagesWithReactions = messagesData.map((message, index) => ({
+                    ...message,
+                    reactions: reactionsData[index]
+                }));
+
+                setMessages(messagesWithReactions);
+            });
+        })
+        .catch(error => console.error("Failed to fetch messages:", error));
+    };
+
 
     React.useEffect(() => {
         // Fetch room details
         fetch_room_detail();
         fetch_messages();
         updateLastViewed();
-        // const room_interval = setInterval(fetch_room_detail, 500);
+
         const message_interval = setInterval(fetch_messages, 500);
-
         return () => clearInterval(message_interval);
-
     }, [id]); // Re-run the effect if the room ID changes
 
     const handleUpdateRoomName = () => {
@@ -651,6 +672,29 @@ function ChatChannel() {
                 updateLastViewed();
             })
             .catch(error => console.error("Failed to post message:", error));
+    };
+    const handleAddReaction = (messageId, emoji) => {
+        const apiKey = localStorage.getItem('api_key');
+        fetch(`/api/message/${messageId}/reaction`, {
+            method: 'POST',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({emoji}),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to add reaction');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.message === "Reaction already exists") {
+                alert("You have already added this emoji :)");
+            }
+        })
+        .catch(error => console.error('Error adding reaction:', error));
     };
 
     const goToSplash = () => {
@@ -696,8 +740,34 @@ function ChatChannel() {
                         <div className="messages">
                             {messages.map((message, index) => (
                                 <div key={index} className="message">
-                                    <div className="author">{message.name} : </div>
+                                    <div className="author">{message.name} :</div>
                                     <div className="content">{message.body}</div>
+                                        {message.reactions && message.reactions.length > 0 && (
+                                            <div className="reactions">
+                                                {message.reactions.map((reaction, index) => (
+                                                    <span key={index} className="reaction"
+                                                          onMouseEnter={(e) => {
+                                                              // Show tooltip
+                                                              e.currentTarget.querySelector('.users').style.display = 'block';
+                                                          }}
+                                                          onMouseLeave={(e) => {
+                                                              // Hide tooltip
+                                                              e.currentTarget.querySelector('.users').style.display = 'none';
+                                                    }}>
+                                                         {reaction.emoji}{reaction.users.split(',').length}&nbsp;
+                                                         <span className="users" style={{display: 'none'}}>
+                                                           {reaction.users}
+                                                         </span>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    <div className="message-reactions">
+                                        {['😀', '❤️', '👍'].map(emoji => (
+                                            <button key={emoji}
+                                                    onClick={() => handleAddReaction(message.id, emoji)}>{emoji}</button>
+                                        ))}
+                                    </div>
                                     <button>Reply</button>
                                 </div>
                             ))}
@@ -705,7 +775,7 @@ function ChatChannel() {
                     </div>
                     {!messages.length && (
                         <div className="noMessages">
-                            <h2>Oops, we can't find that room!</h2>
+                        <h2>Oops, we can't find that room!</h2>
                             <p><a onClick={goToSplash}>Let's go home and try again.</a ></p >
                         </div>
                     )}

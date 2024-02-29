@@ -373,3 +373,52 @@ def get_reply(message_id):
         return jsonify([dict(r) for r in replies]), 200
     else:
         return jsonify([]), 200
+
+
+@app.route('/api/message/<int:message_id>/reaction', methods=['GET', 'POST'])
+def reaction(message_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Missing API key in request header'
+        }), 400
+
+    user = query_db('SELECT * FROM users WHERE api_key = ?', [api_key], one=True)
+    if not user:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Invalid API key'
+        }), 403
+
+    if request.method == 'POST':
+        print("add emoji")  # For debugging
+        emoji = request.get_json().get('emoji')
+        if not emoji:
+            return jsonify({'status': 'fail', 'error': 'Emoji is required'}), 400
+
+        existing_reaction = query_db('SELECT id FROM reactions WHERE message_id = ? AND user_id = ? AND emoji = ?',
+                                     [message_id, user['id'], emoji], one=True)
+        if existing_reaction:
+            # Reaction already exists, so we do nothing or update it as needed
+            return jsonify({'status': 'success', 'message': 'Reaction already exists'}), 200
+        else:
+            # Insert new reaction
+            query_db('INSERT INTO reactions (message_id, user_id, emoji) VALUES (?, ?, ?)', [message_id, user['id'], emoji])
+            return jsonify({'status': 'success', 'message': 'Reaction added'}), 201
+
+    elif request.method == 'GET':
+        print("get emoji")  # For debugging
+        reactions = query_db(
+            'SELECT emoji, GROUP_CONCAT(users.name) as users FROM reactions JOIN users ON reactions.user_id = users.id WHERE message_id = ? GROUP BY emoji',
+            [message_id])
+        if reactions:
+            return jsonify([dict(row) for row in reactions]), 200
+        else:
+            return jsonify([]), 200
+
+    else:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Invalid method. Only takes POST and GET methods in the request'
+        }), 400
