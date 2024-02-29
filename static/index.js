@@ -7,7 +7,7 @@ const {
     useParams
 } = ReactRouterDOM;
 
-// Refactor App component to use BrowserRouter and Route
+// TODO: ------------------------ App Component -------------------------------
 function App() {
     const [user, setUser] = React.useState(null);
     const [channels, setChannels] = React.useState([]);
@@ -78,9 +78,8 @@ function App() {
     );
 }
 
-// Refactor other components as needed to work with react-router-dom
 
-// SplashScreen component changes
+// TODO: ------------------------ Splash Component -------------------------------
 function SplashScreen(props) {
     const [rooms, setRooms] = React.useState([]);
     const [unreadCounts, setUnreadCounts] = React.useState({});
@@ -296,7 +295,7 @@ function SplashScreen(props) {
 }
 
 
-// LoginForm component changes
+// TODO: ------------------------ Login Component -------------------------------
 function LoginForm(props) {
     const [username, setUsername] = React.useState('');
     const [password, setPassword] = React.useState('');
@@ -381,6 +380,7 @@ function LoginForm(props) {
 }
 
 
+// TODO: ------------------------ Profile Component -------------------------------
 function Profile({user, setUser}) {
     const history = useHistory();
 
@@ -522,8 +522,7 @@ function Profile({user, setUser}) {
 }
 
 
-// ChatChannel component changes
-// Extract channelId from URL params using useParams hook
+// TODO: ------------------------ Channel Component -------------------------------
 function ChatChannel() {
     const {id} = useParams(); // Get the channel ID from the URL
     const history = useHistory();
@@ -746,18 +745,18 @@ function ChatChannel() {
                                             <div className="reactions">
                                                 {message.reactions.map((reaction, index) => (
                                                     <span key={index} className="reaction"
-                                                          onMouseEnter={(e) => {
-                                                              // Show tooltip
-                                                              e.currentTarget.querySelector('.users').style.display = 'block';
-                                                          }}
-                                                          onMouseLeave={(e) => {
-                                                              // Hide tooltip
-                                                              e.currentTarget.querySelector('.users').style.display = 'none';
-                                                    }}>
-                                                         {reaction.emoji}{reaction.users.split(',').length}&nbsp;
-                                                         <span className="users" style={{display: 'none'}}>
-                                                           {reaction.users}
-                                                         </span>
+                                                        onMouseEnter={(e) => {
+                                                            // Show tooltip
+                                                            e.currentTarget.querySelector('.users').classList.add('show');
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            // Hide tooltip
+                                                            e.currentTarget.querySelector('.users').classList.remove('show');
+                                                        }}>
+                                                        {reaction.emoji} {reaction.users.split(',').length}&nbsp;
+                                                        <span className="users">
+                                                            {reaction.users}
+                                                        </span>
                                                     </span>
                                                 ))}
                                             </div>
