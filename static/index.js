@@ -187,22 +187,24 @@ function SplashScreen(props) {
     }
 
     const fetchUnreadMessageCounts = () => {
-        fetch('/api/user/unread-messages', {
-            method: 'GET',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-            },
-        })
-            .then((response) => response.json())
-            .then((data) => {
-                const counts = data.reduce((acc, curr) => {
-                    acc[curr.channel_id] = curr.unread_count;
-                    return acc;
-                }, {});
-                setUnreadCounts(counts);
+        if (apiKey) {
+            fetch('/api/user/unread-messages', {
+                method: 'GET',
+                headers: {
+                    'Authorization': apiKey,
+                    'Content-Type': 'application/json',
+                },
             })
-            .catch((error) => console.error('Failed to fetch unread messages count:', error));
+                .then((response) => response.json())
+                .then((data) => {
+                    const counts = data.reduce((acc, curr) => {
+                        acc[curr.channel_id] = curr.unread_count;
+                        return acc;
+                    }, {});
+                    setUnreadCounts(counts);
+                })
+                .catch((error) => console.error('Failed to fetch unread messages count:', error));
+        }
     };
 
     React.useEffect(() => {
