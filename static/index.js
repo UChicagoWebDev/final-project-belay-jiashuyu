@@ -155,13 +155,7 @@ function SplashScreen(props) {
     }
 
     function fetchRooms() {
-
         console.log("splashScreen apiKey", apiKey);
-        if (!apiKey) {
-            console.error("API key not found.");
-            setIsLoading(false);
-            return;
-        }
 
         fetch('/api/channel', {
             method: 'GET',
@@ -262,7 +256,7 @@ function SplashScreen(props) {
                         {rooms.map((room) => (
                             <button key={room.id} onClick={() => navigateToChannel(room.id)}>
                                 {room.name}
-                                {unreadCounts[room.id] !== 0 && <strong>({unreadCounts[room.id]} unread messages)</strong>}
+                                {unreadCounts[room.id] !== 0 && props.user && <strong>({unreadCounts[room.id]} unread messages)</strong>}
                             </button>
                         ))}
                     </div>
@@ -722,6 +716,11 @@ function ChatChannel() {
     };
 
     React.useEffect(() => {
+        const apiKey = localStorage.getItem('api_key');
+        if (!apiKey) {
+            history.push('/login');
+            alert("Please login before entering to the channels.")
+        }
         fetch_room_detail();
         fetch_messages();
         updateLastViewed();

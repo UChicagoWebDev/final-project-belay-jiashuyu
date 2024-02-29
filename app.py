@@ -165,8 +165,18 @@ def profile():
         }), 400
 
 
-@app.route('/api/channel', methods=['GET', 'POST'])
-def channel():
+@app.route('/api/channel', methods=['GET'])
+def get_channels():
+    print("get all channels")  # For debugging
+    channels = query_db('SELECT * FROM channels')
+    if channels:
+        return jsonify([dict(r) for r in channels]), 200
+    else:
+        return jsonify([]), 200
+
+
+@app.route('/api/channel', methods=['POST'])
+def create_channel():
     api_key = request.headers.get('Authorization')
     if not api_key:
         return jsonify({
@@ -181,29 +191,14 @@ def channel():
             'error': 'Invalid API key'
         }), 403
 
-    if request.method == 'GET':
-        print("get all channels")  # For debugging
-        channels = query_db('SELECT * FROM channels')
-        if channels:
-            return jsonify([dict(r) for r in channels]), 200
-        else:
-            return jsonify([]), 200
-
-    elif request.method == 'POST':
-        print("create channel")  # For debugging
-        new_channel_name = "Unnamed Channel " + ''.join(random.choices(string.digits, k=6))
-        channel = query_db('INSERT INTO channels (name) VALUES (?) RETURNING id, name', [new_channel_name], one=True)
-        return jsonify({
-            'status': 'success',
-            'id': channel['id'],
-            'name': channel['name']
-        }), 200
-
-    else:
-        return jsonify({
-            'status': 'fail',
-            'error': 'Invalid method. Only takes POST and GET methods in the request'
-        }), 400
+    print("create channel")  # For debugging
+    new_channel_name = "Unnamed Channel " + ''.join(random.choices(string.digits, k=6))
+    channel = query_db('INSERT INTO channels (name) VALUES (?) RETURNING id, name', [new_channel_name], one=True)
+    return jsonify({
+        'status': 'success',
+        'id': channel['id'],
+        'name': channel['name']
+    }), 200
 
 
 @app.route('/api/channel/<int:channel_id>', methods=['GET', 'POST'])
