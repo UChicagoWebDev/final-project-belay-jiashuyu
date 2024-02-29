@@ -545,9 +545,29 @@ function ChatChannel() {
             },
         })
             .then(response => response.json())
-            .then(data => {
-                console.log(data);
-                setReplies(data);
+            .then(messagesData => {
+                console.log("Fetched messages: ", messagesData);
+
+                // Fetch reactions for each reply
+                const fetchReactionsPromises = messagesData.map(message =>
+                    fetch(`/api/message/${message.id}/reaction`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': localStorage.getItem('api_key'),
+                            'Content-Type': 'application/json'
+                        }
+                    }).then(response => response.json())
+                );
+
+                // Wait for all reactions to be fetched
+                Promise.all(fetchReactionsPromises).then(reactionsData => {
+                    const messagesWithReactions = messagesData.map((message, index) => ({
+                        ...message,
+                        reactions: reactionsData[index]
+                    }));
+
+                    setReplies(messagesWithReactions);
+                });
             })
             .catch(error => console.error("Failed to fetch replies:", error));
     };
@@ -709,9 +729,10 @@ function ChatChannel() {
         const message_interval = setInterval(() => {
             fetch_messages();
             fetchRepliesCount();
+            fetchRepliesForMessage(selectedMessageId);
         }, 500);
         return () => clearInterval(message_interval);
-    }, [id]); // Re-run the effect if the room ID changes
+    }, [id, selectedMessageId]); // Re-run the effect if the room ID changes
 
     const handleUpdateRoomName = () => {
         fetch(`/api/channel/${id}`, {
@@ -855,7 +876,37 @@ function ChatChannel() {
                                 {replies.length > 0 ? (
                                     replies.map((reply, index) => (
                                         <div key={index} className="reply">
-                                            <div><strong>{reply.name}</strong>: {reply.body}</div>
+                                            <div className="author">{reply.name}</div>
+                                            <div className="content">{reply.body}</div>
+
+                                            {reply.reactions && reply.reactions.length > 0 && (
+                                                <div className="reactions">
+                                                    {reply.reactions.map((reaction, index) => (
+                                                        <span key={index} className="reaction"
+                                                              onMouseEnter={(e) => {
+                                                                  // Show tooltip
+                                                                  e.currentTarget.querySelector('.users').classList.add('show');
+                                                              }}
+                                                              onMouseLeave={(e) => {
+                                                                  // Hide tooltip
+                                                                  e.currentTarget.querySelector('.users').classList.remove('show');
+                                                              }}>
+                                                            {reaction.emoji} {reaction.users.split(',').length}&nbsp;
+                                                            <span className="users">
+                                                                {reaction.users}
+                                                            </span>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <div className="message-reactions">
+                                                {['😀', '❤️', '👍'].map(emoji => (
+                                                    <button key={emoji}
+                                                            onClick={() => handleAddReaction(reply.id, emoji)}>{emoji}</button>
+                                                ))}
+                                            </div>
+
                                         </div>
                                     ))
                                 ) : (

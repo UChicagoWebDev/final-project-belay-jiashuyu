@@ -383,9 +383,25 @@ h3 {
   display: flex;
   flex-direction: column;
   margin-right: 20px;
+  overflow-y: auto;
+}
+
+.channel .chat .replies {
+  display: flex;
+  flex-direction: column;
+  margin-right: 20px;
+  min-height: 300px;
+  max-height: 600px;
 }
 
 .channel .chat .message {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid lightgray;
+  padding: 5px 0;
+}
+
+.channel .chat .reply {
   display: flex;
   align-items: center;
   border-bottom: 1px solid lightgray;
@@ -398,7 +414,20 @@ h3 {
   margin-right: 8px;
 }
 
+.channel .chat .reply .author {
+  color: #c93;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
 .channel .chat .message .content {
+  display: block;
+  padding: 5px;
+  grid-column: 2/3;
+  flex-grow: 1;
+}
+
+.channel .chat .reply .content {
   display: block;
   padding: 5px;
   grid-column: 2/3;
@@ -409,11 +438,11 @@ h3 {
     margin-left: 8px;
 }
 
-.channel .replies-section {
+.channel .replies {
     padding: 10px;
     margin-top: 20px;
-    background-color: #f0f0f0;
-    border: 1px solid #ccc;
+    background-color: aliceblue;
+    border: 1px solid lightcoral;
     overflow-y: auto;
     max-height: 300px;
 }
