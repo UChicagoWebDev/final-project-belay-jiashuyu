@@ -795,6 +795,12 @@ function ChatChannel() {
         history.push('/');
     };
 
+    // Test image url: https://uchicagowebdev.com/examples/week_1/homecoming.jpeg
+    const parseImageUrls = (message) => {
+      const regex = /https?:\/\/\S+\.(jpg|jpeg|png|gif)/gi;
+      return message.match(regex) || [];
+    };
+
     return (
         <div className="channel">
             <div className="header">
@@ -830,7 +836,14 @@ function ChatChannel() {
                             {messages.map((message, index) => (
                                 <div key={index} className="message">
                                     <div className="author">{message.name}</div>
-                                    <div className="content">{message.body}</div>
+                                    <div className="content">
+                                        {message.body}
+                                        {/* Display images after the message content */}
+                                        {parseImageUrls(message.body).map((url, imgIndex) => (
+                                            <img key={imgIndex} src={url} alt="Message Attachment"
+                                                 style={{maxWidth: '200px', maxHeight: '200px', marginTop: '10px'}}/>
+                                        ))}
+                                    </div>
 
                                     {message.reactions && message.reactions.length > 0 && (
                                         <div className="reactions">
@@ -877,7 +890,14 @@ function ChatChannel() {
                                     replies.map((reply, index) => (
                                         <div key={index} className="reply">
                                             <div className="author">{reply.name}</div>
-                                            <div className="content">{reply.body}</div>
+                                            <div className="content">
+                                                {reply.body}
+                                                {/* Display images after the reply content */}
+                                                {parseImageUrls(reply.body).map((url, imgIndex) => (
+                                                    <img key={imgIndex} src={url} alt="Message Attachment"
+                                                         style={{maxWidth: '100px', maxHeight: '100px', marginTop: '10px'}}/>
+                                                ))}
+                                            </div>
 
                                             {reply.reactions && reply.reactions.length > 0 && (
                                                 <div className="reactions">
