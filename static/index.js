@@ -721,7 +721,6 @@ function ChatChannel() {
         .catch(error => console.error("Failed to fetch messages:", error));
     };
 
-
     React.useEffect(() => {
         fetch_room_detail();
         fetch_messages();
@@ -729,7 +728,7 @@ function ChatChannel() {
         const message_interval = setInterval(() => {
             fetch_messages();
             fetchRepliesCount();
-            fetchRepliesForMessage(selectedMessageId);
+            if (selectedMessageId) fetchRepliesForMessage(selectedMessageId);
         }, 500);
         return () => clearInterval(message_interval);
     }, [id, selectedMessageId]); // Re-run the effect if the room ID changes
