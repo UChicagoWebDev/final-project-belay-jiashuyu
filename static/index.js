@@ -47,7 +47,7 @@ function App() {
             <div>
                 <Switch>
                     <Route path="/login">
-                        <LoginForm handleLogin={handleLogin}/>
+                        <LoginForm user={user} setUser={setUser} handleLogin={handleLogin}/>
                     </Route>
                     <Route path="/profile">
                         <Profile user={user} setUser={setUser}/>
@@ -265,7 +265,7 @@ function SplashScreen(props) {
                         ))}
                     </div>
                 ) : (
-                    <div className="noRooms">No rooms yet! You get to be first!</div>
+                    <div className="noRooms">No channels yet! Create the first channel on Belay!</div>
                 )}
             </div>
         </div>
@@ -279,6 +279,28 @@ function LoginForm(props) {
     const [password, setPassword] = React.useState('');
     const [errorMessage, setErrorMessage] = React.useState('');
     const history = useHistory();
+
+    const handleSignup = () => {
+        fetch('/api/signup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Signup failed');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("New user data:", data);
+                localStorage.setItem('api_key', data.api_key);
+                props.setUser({id: data.id, username: data.username, apiKey: data.api_key});
+                history.push('/profile');
+            })
+            .catch(error => {
+                console.error('Error during signup:', error);
+            });
+    };
 
     const handleInputChange = (event) => {
         const {name, value} = event.target;
@@ -341,7 +363,7 @@ function LoginForm(props) {
                         <button type="submit">Login</button>
                     </form>
                     <div className="failed">
-                        <button type="button" onClick={props.onSignupClick}>Create a new Account</button>
+                        <button type="button" onClick={handleSignup}>Create a new Account</button>
                     </div>
 
                     {errorMessage && (
