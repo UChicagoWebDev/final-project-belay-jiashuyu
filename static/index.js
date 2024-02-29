@@ -10,7 +10,6 @@ const {
 // TODO: ------------------------ App Component -------------------------------
 function App() {
     const [user, setUser] = React.useState(null);
-    const [channels, setChannels] = React.useState([]);
 
     const handleLogin = (username, password) => {
         return fetch('/api/login', {
@@ -22,34 +21,24 @@ function App() {
         })
             .then(response => {
                 if (!response.ok) {
-                    // Convert non-2xx HTTP responses into errors
                     throw new Error('Login failed');
                 }
                 return response.json();
             })
             .then(data => {
                 console.log("data", data)
-                // Assuming the API returns a user object with an api_key on successful login
                 setUser({
                     id: data.id,
                     username: data.username,
                     apiKey: data.api_key
                 });
-
                 console.log("user", user);
-
-                // Store the api_key in localStorage or another secure place for future requests
                 localStorage.setItem('api_key', data.api_key);
-                // Navigate to the splash page or another appropriate page upon login
-                // This can be done using the useHistory hook if this logic is inside a component or withRouter HOC
-                // For example: history.push('/');
-
-                return true; // Indicate success
+                return true;
             })
             .catch(error => {
                 console.error('Error during login:', error);
-                // Optionally handle login failure (e.g., by showing an error message) here
-                return false; // Indicate failure
+                return false;
             });
     };
 
@@ -92,7 +81,6 @@ function SplashScreen(props) {
         fetch('/api/signup', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            // No need to send a body for the signup as it generates a new user automatically
         })
             .then(response => {
                 if (!response.ok) {
@@ -102,13 +90,8 @@ function SplashScreen(props) {
             })
             .then(data => {
                 console.log("New user data:", data);
-
                 localStorage.setItem('api_key', data.api_key);
                 props.setUser({id: data.id, username: data.username, apiKey: data.api_key});
-                // Update user state with new user details, you might need to lift this state up or use context/redux if this component doesn't hold the user state
-                // setUser({ id: data.id, username: data.username, apiKey: data.api_key });
-
-                // Redirect to profile page
                 history.push('/profile');
             })
             .catch(error => {
@@ -123,9 +106,6 @@ function SplashScreen(props) {
                 'Authorization': apiKey,
                 'Content-Type': 'application/json',
             },
-            // Depending on your API, you might need to send a body.
-            // If your API generates a room name by default, you might not need to send a body.
-            // body: JSON.stringify({ name: 'New Room Name' }),
         })
             .then(response => {
                 if (!response.ok) {
@@ -147,7 +127,7 @@ function SplashScreen(props) {
 
     function fetchUserInfo() {
         const apiKey = localStorage.getItem('api_key');
-        console.log("apikey in App useeffect", apiKey);
+        console.log("apikey in App useEffect", apiKey);
         if (apiKey) {
             fetch('/api/profile', {
                 method: 'GET',
@@ -166,12 +146,10 @@ function SplashScreen(props) {
                     props.setUser({
                         id: userData.id,
                         username: userData.username,
-                        // Include any other user fields you need
                     });
                 })
                 .catch(error => {
                     console.error('Error fetching user data:', error);
-                    // Handle error, e.g., by clearing localStorage if the API key is invalid
                 });
         }
     }
@@ -275,10 +253,10 @@ function SplashScreen(props) {
                 )}
             </div>
 
-            <h2>Rooms</h2>
-            <div className="rooms">
+            <h2>Channels</h2>
+            <div className="channels">
                 {!isLoading && rooms.length > 0 ? (
-                    <div className="roomList">
+                    <div className="channelList">
                         {rooms.map((room) => (
                             <button key={room.id} onClick={() => navigateToChannel(room.id)}>
                                 {room.name}
@@ -384,7 +362,6 @@ function LoginForm(props) {
 function Profile({user, setUser}) {
     const history = useHistory();
 
-    // Assuming useState hook is used for form fields
     const [username, setUsername] = React.useState(user ? user.username : '');
     const [password, setPassword] = React.useState('');
     const [repeatPassword, setRepeatPassword] = React.useState('');
@@ -392,7 +369,7 @@ function Profile({user, setUser}) {
 
     const handleLogout = () => {
         setUser(null);
-        localStorage.removeItem('api_key'); // Ensure key matches what's used elsewhere
+        localStorage.removeItem('api_key');
         history.push("/login");
     };
 
@@ -404,7 +381,7 @@ function Profile({user, setUser}) {
                 'Authorization': apiKey,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({name: username}) // Assuming the API expects the new username under the key 'name'
+            body: JSON.stringify({name: username})
         })
             .then(response => {
                 if (!response.ok) {
@@ -414,8 +391,8 @@ function Profile({user, setUser}) {
             })
             .then(updatedUser => {
                 console.log('Username updated to', updatedUser.username);
-                setUser(updatedUser); // Update the user state with the new user information
-                setUsername(updatedUser.username); // Update the username state to reflect the change
+                setUser(updatedUser);
+                setUsername(updatedUser.username);
                 alert("Username has been updated!");
             })
             .catch(error => {
@@ -436,14 +413,13 @@ function Profile({user, setUser}) {
                 'Authorization': apiKey,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({password: password}) // Assuming the API expects the new password under the key 'password'
+            body: JSON.stringify({password: password})
         })
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Failed to update password');
                 }
                 console.log('Password updated successfully');
-                // Optionally, clear the password fields after successful update
                 setPassword('');
                 setRepeatPassword('');
                 alert("Password has been updated!");
@@ -453,7 +429,6 @@ function Profile({user, setUser}) {
                 setError('Failed to update password');
             });
     };
-
 
     const goToSplash = () => {
         history.push('/');
@@ -479,7 +454,7 @@ function Profile({user, setUser}) {
                 })
                 .then(userData => {
                     setUsername(userData.username);
-                    setPassword(userData.password); // Note: Storing and displaying passwords in the client-side is not recommended
+                    setPassword(userData.password);
                     setRepeatPassword(userData.password);
                 })
                 .catch(error => {
@@ -496,7 +471,7 @@ function Profile({user, setUser}) {
             </div>
             <div className="clip">
                 <div className="auth container">
-                    <h2>Welcome to Watch Party!</h2>
+                    <h2>Welcome to Belay!</h2>
                     <div className="alignedForm">
                         <label htmlFor="username">Username: </label>
                         <input name="username" value={username} onChange={(e) => setUsername(e.target.value)}/>
@@ -524,18 +499,74 @@ function Profile({user, setUser}) {
 
 // TODO: ------------------------ Channel Component -------------------------------
 function ChatChannel() {
-    const {id} = useParams(); // Get the channel ID from the URL
+    const {id} = useParams();
     const history = useHistory();
     const [room, setRoom] = React.useState({name: ''}); // State to hold room details
     const [isEditing, setIsEditing] = React.useState(false); // State to toggle edit mode
     const [newRoomName, setNewRoomName] = React.useState(''); // State for the new room name input
     const [messages, setMessages] = React.useState([]); // State to hold messages
     const [newMessage, setNewMessage] = React.useState(''); // State for the new message input
+    const [repliesCount, setRepliesCount] = React.useState({});
+    const [selectedMessageId, setSelectedMessageId] = React.useState(null);
+    const [replies, setReplies] = React.useState([]);
+    const [replyInput, setReplyInput] = React.useState({});
+
+    const fetchRepliesForMessage = (messageId) => {
+        const apiKey = localStorage.getItem('api_key');
+        fetch(`/api/message/${messageId}/reply`, {
+            method: 'GET',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                setReplies(data);
+            })
+            .catch(error => console.error("Failed to fetch replies:", error));
+    };
+
+    const handleShowReplies = (messageId) => {
+        setSelectedMessageId(messageId);
+        fetchRepliesForMessage(messageId);
+    };
+
+    const handlePostReply = (event, messageId) => {
+        event.preventDefault(); // Prevent the default form submission behavior
+        const apiKey = localStorage.getItem('api_key');
+        const replyBody = replyInput[messageId];
+
+        if (!replyBody) {
+            alert('Reply cannot be empty');
+            return;
+        }
+
+        fetch(`/api/message/${messageId}/reply`, {
+            method: 'POST',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({body: replyBody}),
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to post reply');
+                }
+                return response.json();
+            })
+            .then(() => {
+                console.log('Reply posted successfully');
+                setReplyInput(prev => ({...prev, [messageId]: ''}));
+                fetchRepliesForMessage(messageId); // Refresh the replies to include the new one
+            })
+            .catch(error => console.error('Failed to post reply:', error));
+    };
 
     const updateLastViewed = () => {
         const apiKey = localStorage.getItem('api_key');
-
-        // Fetch messages for the room and update last viewed message
         fetch(`/api/channel/${id}/messages`, {
             method: 'GET',
             headers: {
@@ -547,7 +578,7 @@ function ChatChannel() {
         .then(data => {
             setMessages(data);
             if (data.length > 0) {
-                const lastMessageId = data[data.length - 1].id; // Assuming 'id' is the message ID
+                const lastMessageId = data[data.length - 1].id;
                 // Update last viewed message
                 fetch(`/api/channel/${id}/last-viewed`, {
                     method: 'POST',
@@ -571,7 +602,27 @@ function ChatChannel() {
     };
 
     const handleEditClick = () => {
-        setIsEditing(true); // Enable edit mode
+        setIsEditing(true);
+    };
+
+    const fetchRepliesCount = () => {
+        const apiKey = localStorage.getItem('api_key');
+        fetch(`/api/channel/${id}/count-replies`, {
+            method: 'GET',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(response => response.json())
+            .then(data => {
+                const repliesMap = data.reduce((acc, item) => {
+                    acc[item.message_id] = item.reply_count;
+                    return acc;
+                }, {});
+                setRepliesCount(repliesMap);
+            })
+            .catch(error => console.error("Failed to fetch replies count:", error));
     };
 
     const fetch_room_detail =() => {
@@ -585,7 +636,7 @@ function ChatChannel() {
             .then(response => response.json())
             .then(data => {
                 setRoom({name: data.name});
-                setNewRoomName(data.name); // Pre-fill with current room name
+                setNewRoomName(data.name);
             })
             .catch(error => console.error("Failed to fetch room details:", error));
     }
@@ -600,7 +651,7 @@ function ChatChannel() {
         })
         .then(response => response.json())
         .then(messagesData => {
-            console.log("Fetched messages: ", messagesData); // Log the fetched data for debugging
+            console.log("Fetched messages: ", messagesData);
 
             // Fetch reactions for each message
             const fetchReactionsPromises = messagesData.map(message =>
@@ -628,19 +679,19 @@ function ChatChannel() {
 
 
     React.useEffect(() => {
-        // Fetch room details
         fetch_room_detail();
         fetch_messages();
         updateLastViewed();
-
-        const message_interval = setInterval(fetch_messages, 500);
+        const message_interval = setInterval(() => {
+            fetch_messages();
+            fetchRepliesCount();
+        }, 500);
         return () => clearInterval(message_interval);
     }, [id]); // Re-run the effect if the room ID changes
 
     const handleUpdateRoomName = () => {
-        // API call to update the room name
         fetch(`/api/channel/${id}`, {
-            method: 'POST', // Or 'PUT', depending on your API
+            method: 'POST',
             headers: {
                 'Authorization': localStorage.getItem('api_key'),
                 'Content-Type': 'application/json'
@@ -656,7 +707,6 @@ function ChatChannel() {
 
     const handlePostMessage = (event) => {
         event.preventDefault(); // Prevent form submission from reloading the page
-        // API call to post a new message
         fetch(`/api/channel/${id}/messages`, {
             method: 'POST',
             headers: {
@@ -666,7 +716,7 @@ function ChatChannel() {
             body: JSON.stringify({body: newMessage}),
         })
             .then(() => {
-                setMessages([...messages, {body: newMessage}]); // Optimistically update the UI
+                setMessages([...messages, {body: newMessage}]);
                 setNewMessage(''); // Clear input field
                 updateLastViewed();
             })
@@ -730,48 +780,89 @@ function ChatChannel() {
             <div className="clip">
                 <div className="container">
                     <div className="chat">
-                        <div className="comment_box">
-                            <label htmlFor="comment">What do you have to say?</label>
-                            <textarea name="comment" value={newMessage}
-                                      onChange={(e) => setNewMessage(e.target.value)}></textarea>
-                            <button onClick={handlePostMessage} className="post_room_messages">Post</button>
-                        </div>
+
                         <div className="messages">
                             {messages.map((message, index) => (
                                 <div key={index} className="message">
-                                    <div className="author">{message.name} :</div>
+                                    <div className="author">{message.name}</div>
                                     <div className="content">{message.body}</div>
-                                        {message.reactions && message.reactions.length > 0 && (
-                                            <div className="reactions">
-                                                {message.reactions.map((reaction, index) => (
-                                                    <span key={index} className="reaction"
-                                                        onMouseEnter={(e) => {
-                                                            // Show tooltip
-                                                            e.currentTarget.querySelector('.users').classList.add('show');
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            // Hide tooltip
-                                                            e.currentTarget.querySelector('.users').classList.remove('show');
-                                                        }}>
-                                                        {reaction.emoji} {reaction.users.split(',').length}&nbsp;
-                                                        <span className="users">
-                                                            {reaction.users}
-                                                        </span>
+
+                                    {message.reactions && message.reactions.length > 0 && (
+                                        <div className="reactions">
+                                            {message.reactions.map((reaction, index) => (
+                                                <span key={index} className="reaction"
+                                                    onMouseEnter={(e) => {
+                                                        // Show tooltip
+                                                        e.currentTarget.querySelector('.users').classList.add('show');
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        // Hide tooltip
+                                                        e.currentTarget.querySelector('.users').classList.remove('show');
+                                                    }}>
+                                                    {reaction.emoji} {reaction.users.split(',').length}&nbsp;
+                                                    <span className="users">
+                                                        {reaction.users}
                                                     </span>
-                                                ))}
-                                            </div>
-                                        )}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+
                                     <div className="message-reactions">
                                         {['😀', '❤️', '👍'].map(emoji => (
                                             <button key={emoji}
                                                     onClick={() => handleAddReaction(message.id, emoji)}>{emoji}</button>
                                         ))}
                                     </div>
-                                    <button>Reply</button>
+
+                                    {repliesCount[message.id] > 0 && (
+                                        <button onClick={() => handleShowReplies(message.id)}>
+                                            Replies: {repliesCount[message.id]}
+                                        </button>
+                                    )}
+                                    <button onClick={() => handleShowReplies(message.id)}>Reply!</button>
                                 </div>
                             ))}
                         </div>
+
+                        {selectedMessageId && (
+                            <div className="replies">
+                                <h3>Replies</h3>
+                                {replies.length > 0 ? (
+                                    replies.map((reply, index) => (
+                                        <div key={index} className="reply">
+                                            <div><strong>{reply.name}</strong>: {reply.body}</div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p>No replies yet.</p>
+                                )}
+                                <div className="comment_box">
+                                    <label htmlFor="comment">What do you want to reply?</label>
+                                    <textarea
+                                        name="comment"
+                                        value={replyInput[selectedMessageId] || ''}
+                                        onChange={(e) => setReplyInput({
+                                            ...replyInput,
+                                            [selectedMessageId]: e.target.value
+                                        })}
+                                    ></textarea>
+                                    <button onClick={(e) => handlePostReply(e, selectedMessageId)}
+                                            className="post_room_messages">Post
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {!selectedMessageId && (<div></div>)}
+                        <div className="comment_box">
+                            <label htmlFor="comment">What do you want to say?</label>
+                            <textarea name="comment" value={newMessage}
+                                      onChange={(e) => setNewMessage(e.target.value)}></textarea>
+                            <button onClick={handlePostMessage} className="post_room_messages">Post</button>
+                        </div>
                     </div>
+
                     {!messages.length && (
                         <div className="noMessages">
                         <h2>Oops, we can't find that room!</h2>
@@ -784,7 +875,7 @@ function ChatChannel() {
     );
 }
 
-// Render your App component as before
+// Render the App component
 const rootContainer = document.getElementById('root');
 const root = ReactDOM.createRoot(rootContainer);
 root.render(<App/>);

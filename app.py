@@ -352,29 +352,6 @@ def get_unread_messages_count():
     return jsonify(unread_messages_counts), 200
 
 
-@app.route('/api/message/<int:message_id>/reply', methods=['GET'])
-def get_reply(message_id):
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({
-            'status': 'fail',
-            'error': 'Missing API key in request header'
-        }), 400
-
-    user = query_db('SELECT * FROM users WHERE api_key = ?', [api_key], one=True)
-    if not user:
-        return jsonify({
-            'status': 'fail',
-            'error': 'Invalid API key'
-        }), 403
-
-    replies = query_db('SELECT * FROM messages WHERE replies_to = ?', [message_id], one=True)
-    if replies:
-        return jsonify([dict(r) for r in replies]), 200
-    else:
-        return jsonify([]), 200
-
-
 @app.route('/api/message/<int:message_id>/reaction', methods=['GET', 'POST'])
 def reaction(message_id):
     api_key = request.headers.get('Authorization')
@@ -422,3 +399,69 @@ def reaction(message_id):
             'status': 'fail',
             'error': 'Invalid method. Only takes POST and GET methods in the request'
         }), 400
+
+@app.route('/api/message/<int:message_id>/reply', methods=['GET', 'POST'])
+def reply(message_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Missing API key in request header'
+        }), 400
+
+    user = query_db('SELECT * FROM users WHERE api_key = ?', [api_key], one=True)
+    if not user:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Invalid API key'
+        }), 403
+
+    if request.method == 'GET':
+        replies = query_db('SELECT * FROM messages LEFT JOIN users on messages.user_id = users.id WHERE replies_to = ?',
+                           [message_id])
+        if replies:
+            return jsonify([dict(r) for r in replies]), 200
+        else:
+            return jsonify([]), 200
+
+    elif request.method == 'POST':
+        reply = request.get_json().get('body')
+        if reply:
+            query_db('INSERT INTO messages (user_id, replies_to, body) VALUES (?, ?, ?)',
+                     [user['id'], message_id, reply])
+            return jsonify({'status': 'success'}), 200
+        else:
+            return jsonify({'status': 'fail', 'error': 'Missing reply body'}), 400
+
+
+@app.route('/api/channel/<int:channel_id>/count-replies', methods=['GET'])
+def get_message_replies_count(channel_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Missing API key in request header'
+        }), 400
+
+    user = query_db('SELECT * FROM users WHERE api_key = ?', [api_key], one=True)
+    if not user:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Invalid API key'
+        }), 403
+
+    messages = query_db('SELECT * FROM messages WHERE channel_id = ? AND replies_to IS NULL', [channel_id])
+
+    if messages:
+        reply_counts = []
+        for message in messages:
+            count = query_db('select count(*) as count from messages where replies_to = ?', [message['id']], one=True)
+
+            reply_counts.append({
+                'message_id': message['id'],
+                'reply_count': count['count']
+            })
+
+        return jsonify(reply_counts), 200
+    else:
+        return jsonify([]), 200
