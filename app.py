@@ -220,12 +220,15 @@ def channel_name(channel_id):
     if request.method == 'GET':
         print("get channel info")  # For debugging
         channel = query_db('SELECT * FROM channels WHERE id = ?', [channel_id], one=True)
-        return jsonify({
-            'status': 'success',
-            'id': channel['id'],
-            'name': channel['name'],
-            'username': user['name']
-        }), 200
+        if channel:
+            return jsonify({
+                'status': 'success',
+                'id': channel['id'],
+                'name': channel['name'],
+                'username': user['name']
+            }), 200
+        else:
+            return jsonify({'status': 'fail', 'error': 'channel does not exist'}), 404
 
     elif request.method == 'POST':
         print("update channel name")  # For debugging
