@@ -459,10 +459,6 @@ h3 {
   text-shadow: 0 0 6px white;
 }
 
-.hide {
-  display: none;
-}
-
 /* emoji */
 .reaction .users {
     display: none;

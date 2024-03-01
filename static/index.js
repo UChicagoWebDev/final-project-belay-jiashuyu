@@ -45,6 +45,9 @@ function App() {
         <BrowserRouter>
             <div>
                 <Switch>
+                    <Route exact path="/">
+                        <SplashScreen user={user} setUser={setUser}/>
+                    </Route>
                     <Route path="/login">
                         <LoginForm user={user} setUser={setUser} handleLogin={handleLogin}/>
                     </Route>
@@ -54,11 +57,8 @@ function App() {
                     <Route path="/channel/:id">
                         <ChatChannel/>
                     </Route>
-                    <Route exact path="/">
-                        <SplashScreen user={user} setUser={setUser}/>
-                    </Route>
                     <Route path="*">
-                        <div>Page not found</div>
+                        <NotFoundPage/>
                     </Route>
                 </Switch>
             </div>
@@ -982,6 +982,28 @@ function ChatChannel() {
         </div>
     );
 }
+
+
+function NotFoundPage() {
+    return (
+        <div className="notFound">
+            <div className="header">
+                <h2><a href="/">Belay</a></h2>
+                <h4>404 Page</h4>
+            </div>
+            <div className="clip">
+                <div className="container">
+                    <h1>404</h1>
+                    <div className="message">
+                        <h2>Oops, we can't find that page!</h2>
+                        <a href="/">Let's go home and try again.</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 
 // Render the App component
 const rootContainer = document.getElementById('root');
