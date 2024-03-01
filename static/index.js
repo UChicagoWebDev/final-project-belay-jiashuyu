@@ -2,7 +2,6 @@ const {
     BrowserRouter,
     Switch,
     Route,
-    Link,
     useHistory,
     useParams
 } = ReactRouterDOM;
@@ -524,10 +523,10 @@ function ChatChannel() {
     const [newRoomName, setNewRoomName] = React.useState(''); // State for the new room name input
     const [messages, setMessages] = React.useState([]); // State to hold messages
     const [newMessage, setNewMessage] = React.useState(''); // State for the new message input
-    const [repliesCount, setRepliesCount] = React.useState({});
-    const [selectedMessageId, setSelectedMessageId] = React.useState(null);
-    const [replies, setReplies] = React.useState([]);
-    const [replyInput, setReplyInput] = React.useState({});
+    const [repliesCount, setRepliesCount] = React.useState({}); // State for the reply counts
+    const [selectedMessageId, setSelectedMessageId] = React.useState(null); // State for the selected message id
+    const [replies, setReplies] = React.useState([]); // State to hold replies
+    const [replyInput, setReplyInput] = React.useState({}); // State for the new reply input
 
     const fetchRepliesForMessage = (messageId) => {
         const apiKey = localStorage.getItem('api_key');
@@ -730,7 +729,7 @@ function ChatChannel() {
             if (selectedMessageId) fetchRepliesForMessage(selectedMessageId);
         }, 500);
         return () => clearInterval(message_interval);
-    }, [id, selectedMessageId]); // Re-run the effect if the room ID changes
+    }, [id, selectedMessageId]); // Re-run the effect if the room ID and selected room id changes
 
     const handleUpdateRoomName = () => {
         fetch(`/api/channel/${id}`, {
