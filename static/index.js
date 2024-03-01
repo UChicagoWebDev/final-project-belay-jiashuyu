@@ -198,6 +198,7 @@ function SplashScreen(props) {
     };
 
     React.useEffect(() => {
+        document.title = "Belay Main Page";
         fetchRooms();
         fetchUserInfo();
         fetchUnreadMessageCounts();
@@ -450,6 +451,7 @@ function Profile({user, setUser}) {
         if (!apiKey) {
             history.push('/login');
         } else {
+            document.title = "Belay Profile Page";
             fetch('/api/profile', {
                 method: 'GET',
                 headers: {
@@ -720,6 +722,7 @@ function ChatChannel() {
             history.push('/login');
             alert("Please login before entering to the channels.")
         }
+        document.title = `Belay Channel #${id}`;
         fetch_room_detail();
         fetch_messages();
         updateLastViewed();
