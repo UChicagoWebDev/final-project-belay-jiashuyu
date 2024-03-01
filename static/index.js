@@ -525,6 +525,7 @@ function ChatChannel() {
     const [newMessage, setNewMessage] = React.useState(''); // State for the new message input
     const [repliesCount, setRepliesCount] = React.useState({}); // State for the reply counts
     const [selectedMessageId, setSelectedMessageId] = React.useState(null); // State for the selected message id
+    const [selectedMessage, setSelectedMessage] = React.useState(null); // State for the selected message
     const [replies, setReplies] = React.useState([]); // State to hold replies
     const [replyInput, setReplyInput] = React.useState({}); // State for the new reply input
 
@@ -566,6 +567,8 @@ function ChatChannel() {
     };
 
     const handleShowReplies = (messageId) => {
+        const message = messages.find(m => m.id === messageId);
+        setSelectedMessage(message);
         setSelectedMessageId(messageId);
         fetchRepliesForMessage(messageId);
     };
@@ -882,6 +885,19 @@ function ChatChannel() {
 
                         {selectedMessageId && (
                             <div className="replies">
+                                <h3>Message</h3>
+                                <div className="message">
+                                    <div className="author">{selectedMessage.name}</div>
+                                    <div className="content">
+                                        {selectedMessage.body}
+                                        {/* Display images after the message content */}
+                                        {parseImageUrls(selectedMessage.body).map((url, imgIndex) => (
+                                            <img key={imgIndex} src={url} alt="Message Attachment"
+                                                 style={{maxWidth: '100px', maxHeight: '100px', marginTop: '10px'}}/>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 <h3>Replies</h3>
                                 {replies.length > 0 ? (
                                     replies.map((reply, index) => (
