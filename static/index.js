@@ -1001,6 +1001,7 @@ function ChatChannel() {
 
 
 function NotFoundPage() {
+    document.title = "Belay 404 Page";
     return (
         <div className="notFound">
             <div className="header">
