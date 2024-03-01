@@ -32,7 +32,7 @@ function App() {
                     apiKey: data.api_key
                 });
                 console.log("user", user);
-                localStorage.setItem('api_key', data.api_key);
+                localStorage.setItem('shuyuj_api_key', data.api_key);
                 return true;
             })
             .catch(error => {
@@ -72,7 +72,7 @@ function SplashScreen(props) {
     const [rooms, setRooms] = React.useState([]);
     const [unreadCounts, setUnreadCounts] = React.useState({});
     const [isLoading, setIsLoading] = React.useState(true);
-    const apiKey = localStorage.getItem('api_key');
+    const apiKey = localStorage.getItem('shuyuj_api_key');
     const history = useHistory();
     console.log("props", props);
 
@@ -89,7 +89,7 @@ function SplashScreen(props) {
             })
             .then(data => {
                 console.log("New user data:", data);
-                localStorage.setItem('api_key', data.api_key);
+                localStorage.setItem('shuyuj_api_key', data.api_key);
                 props.setUser({id: data.id, username: data.username, apiKey: data.api_key});
                 history.push('/profile');
             })
@@ -123,10 +123,7 @@ function SplashScreen(props) {
             });
     };
 
-
     function fetchUserInfo() {
-        const apiKey = localStorage.getItem('api_key');
-        console.log("apikey in App useEffect", apiKey);
         if (apiKey) {
             fetch('/api/profile', {
                 method: 'GET',
@@ -288,7 +285,7 @@ function LoginForm(props) {
             })
             .then(data => {
                 console.log("New user data:", data);
-                localStorage.setItem('api_key', data.api_key);
+                localStorage.setItem('shuyuj_api_key', data.api_key);
                 props.setUser({id: data.id, username: data.username, apiKey: data.api_key});
                 history.push('/profile');
             })
@@ -378,7 +375,7 @@ function LoginForm(props) {
 // TODO: ------------------------ Profile Component -------------------------------
 function Profile({user, setUser}) {
     const history = useHistory();
-
+    const apiKey = localStorage.getItem('shuyuj_api_key');
     const [username, setUsername] = React.useState(user ? user.username : '');
     const [password, setPassword] = React.useState('');
     const [repeatPassword, setRepeatPassword] = React.useState('');
@@ -386,12 +383,11 @@ function Profile({user, setUser}) {
 
     const handleLogout = () => {
         setUser(null);
-        localStorage.removeItem('api_key');
+        localStorage.removeItem('shuyuj_api_key');
         history.push("/login");
     };
 
     const handleUpdateUsername = () => {
-        const apiKey = localStorage.getItem('api_key');
         fetch('/api/profile', {
             method: 'POST',
             headers: {
@@ -423,7 +419,6 @@ function Profile({user, setUser}) {
             setError("Passwords don't match");
             return;
         }
-        const apiKey = localStorage.getItem('api_key');
         fetch('/api/profile', {
             method: 'POST',
             headers: {
@@ -452,7 +447,6 @@ function Profile({user, setUser}) {
     };
 
     React.useEffect(() => {
-        const apiKey = localStorage.getItem('api_key');
         if (!apiKey) {
             history.push('/login');
         } else {
@@ -518,6 +512,7 @@ function Profile({user, setUser}) {
 function ChatChannel() {
     const {id} = useParams();
     const history = useHistory();
+    const apiKey = localStorage.getItem('shuyuj_api_key');
     const [room, setRoom] = React.useState({name: ''}); // State to hold room details
     const [isEditing, setIsEditing] = React.useState(false); // State to toggle edit mode
     const [newRoomName, setNewRoomName] = React.useState(''); // State for the new room name input
@@ -531,7 +526,6 @@ function ChatChannel() {
     const [channelExists, setChannelExists] = React.useState(null); // State to track if the channel exists
 
     const fetchRepliesForMessage = (messageId) => {
-        const apiKey = localStorage.getItem('api_key');
         fetch(`/api/message/${messageId}/reply`, {
             method: 'GET',
             headers: {
@@ -548,7 +542,7 @@ function ChatChannel() {
                     fetch(`/api/message/${message.id}/reaction`, {
                         method: 'GET',
                         headers: {
-                            'Authorization': localStorage.getItem('api_key'),
+                            'Authorization': apiKey,
                             'Content-Type': 'application/json'
                         }
                     }).then(response => response.json())
@@ -576,7 +570,6 @@ function ChatChannel() {
 
     const handlePostReply = (event, messageId) => {
         event.preventDefault(); // Prevent the default form submission behavior
-        const apiKey = localStorage.getItem('api_key');
         const replyBody = replyInput[messageId];
 
         if (!replyBody) {
@@ -607,7 +600,6 @@ function ChatChannel() {
     };
 
     const updateLastViewed = () => {
-        const apiKey = localStorage.getItem('api_key');
         fetch(`/api/channel/${id}/messages`, {
             method: 'GET',
             headers: {
@@ -647,7 +639,6 @@ function ChatChannel() {
     };
 
     const fetchRepliesCount = () => {
-        const apiKey = localStorage.getItem('api_key');
         fetch(`/api/channel/${id}/count-replies`, {
             method: 'GET',
             headers: {
@@ -670,7 +661,7 @@ function ChatChannel() {
         fetch(`/api/channel/${id}`, {
             method: 'GET',
             headers: {
-                'Authorization': localStorage.getItem('api_key'),
+                'Authorization': apiKey,
                 'Content-Type': 'application/json'
             }
         })
@@ -692,7 +683,7 @@ function ChatChannel() {
         fetch(`/api/channel/${id}/messages`, {
             method: 'GET',
             headers: {
-                'Authorization': localStorage.getItem('api_key'),
+                'Authorization': apiKey,
                 'Content-Type': 'application/json'
             }
         })
@@ -705,7 +696,7 @@ function ChatChannel() {
                 fetch(`/api/message/${message.id}/reaction`, {
                     method: 'GET',
                     headers: {
-                        'Authorization': localStorage.getItem('api_key'),
+                        'Authorization': apiKey,
                         'Content-Type': 'application/json'
                     }
                 }).then(response => response.json())
@@ -725,7 +716,6 @@ function ChatChannel() {
     };
 
     React.useEffect(() => {
-        const apiKey = localStorage.getItem('api_key');
         if (!apiKey) {
             history.push('/login');
             alert("Please login before entering to the channels.")
@@ -745,7 +735,7 @@ function ChatChannel() {
         fetch(`/api/channel/${id}`, {
             method: 'POST',
             headers: {
-                'Authorization': localStorage.getItem('api_key'),
+                'Authorization': apiKey,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({name: newRoomName}),
@@ -762,7 +752,7 @@ function ChatChannel() {
         fetch(`/api/channel/${id}/messages`, {
             method: 'POST',
             headers: {
-                'Authorization': localStorage.getItem('api_key'),
+                'Authorization': apiKey,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({body: newMessage}),
@@ -774,8 +764,8 @@ function ChatChannel() {
             })
             .catch(error => console.error("Failed to post message:", error));
     };
+
     const handleAddReaction = (messageId, emoji) => {
-        const apiKey = localStorage.getItem('api_key');
         fetch(`/api/message/${messageId}/reaction`, {
             method: 'POST',
             headers: {
