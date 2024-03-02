@@ -6,9 +6,13 @@ const {
     useParams
 } = ReactRouterDOM;
 
+
 // TODO: ------------------------ App Component -------------------------------
 function App() {
     const [user, setUser] = React.useState(null);
+    const [rooms, setRooms] = React.useState([]);
+    const [unreadCounts, setUnreadCounts] = React.useState({});
+    const apiKey = localStorage.getItem('shuyuj_api_key');
 
     const handleLogin = (username, password) => {
         return fetch('/api/login', {
@@ -40,113 +44,6 @@ function App() {
                 return false;
             });
     };
-
-    return (
-        <BrowserRouter>
-            <div>
-                <Switch>
-                    <Route exact path="/">
-                        <SplashScreen user={user} setUser={setUser}/>
-                    </Route>
-                    <Route path="/login">
-                        <LoginForm user={user} setUser={setUser} handleLogin={handleLogin}/>
-                    </Route>
-                    <Route path="/profile">
-                        <Profile user={user} setUser={setUser}/>
-                    </Route>
-                    <Route path="/channel/:id">
-                        <ChatChannel />
-                    </Route>
-                    <Route path="*">
-                        <NotFoundPage />
-                    </Route>
-                </Switch>
-            </div>
-        </BrowserRouter>
-    );
-}
-
-
-// TODO: ------------------------ Splash Component -------------------------------
-function SplashScreen(props) {
-    const [rooms, setRooms] = React.useState([]);
-    const [unreadCounts, setUnreadCounts] = React.useState({});
-    const apiKey = localStorage.getItem('shuyuj_api_key');
-    const history = useHistory();
-    console.log("props", props);
-
-    const handleSignup = () => {
-        fetch('/api/signup', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Signup failed');
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log("New user data:", data);
-                localStorage.setItem('shuyuj_api_key', data.api_key);
-                props.setUser({id: data.id, username: data.username, apiKey: data.api_key});
-                history.push('/profile');
-            })
-            .catch(error => {
-                console.error('Error during signup:', error);
-            });
-    };
-
-    const handleCreateRoom = () => {
-        fetch('/api/channel', {
-            method: 'POST',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to create a new room');
-                }
-                return response.json();
-            })
-            .then(newRoom => {
-                history.push(`/channel/${newRoom.id}`);
-                // Add the new room to the existing list of rooms
-                setRooms(prevRooms => [...prevRooms, newRoom]);
-            })
-            .catch(error => {
-                console.error('Error creating a new room:', error);
-            });
-    };
-
-    function fetchUserInfo() {
-        if (apiKey) {
-            fetch('/api/profile', {
-                method: 'GET',
-                headers: {
-                    'Authorization': apiKey,
-                    'Content-Type': 'application/json',
-                },
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch user data');
-                    }
-                    return response.json();
-                })
-                .then(userData => {
-                    props.setUser({
-                        id: userData.id,
-                        username: userData.username,
-                    });
-                })
-                .catch(error => {
-                    console.error('Error fetching user data:', error);
-                });
-        }
-    }
 
     function fetchRooms() {
         console.log("splashScreen apiKey", apiKey);
@@ -192,12 +89,127 @@ function SplashScreen(props) {
         }
     };
 
+    return (
+        <BrowserRouter>
+            <div>
+                <Switch>
+                    <Route exact path="/">
+                        <SplashScreen user={user}
+                                      setUser={setUser}
+                                      rooms={rooms}
+                                      setRooms={setRooms}
+                                      unreadCounts={unreadCounts}
+                                      setUnreadCounts={setUnreadCounts}
+                                      fetchRooms={fetchRooms}
+                                      fetchUnreadMessageCounts={fetchUnreadMessageCounts}/>
+                    </Route>
+                    <Route path="/login">
+                        <LoginForm user={user} setUser={setUser} handleLogin={handleLogin}/>
+                    </Route>
+                    <Route path="/profile">
+                        <Profile user={user} setUser={setUser}/>
+                    </Route>
+                    <Route path="/channel/:id">
+                        <ChatChannel rooms={rooms}/>
+                    </Route>
+                    <Route path="*">
+                        <NotFoundPage />
+                    </Route>
+                </Switch>
+            </div>
+        </BrowserRouter>
+    );
+}
+
+
+// TODO: ------------------------ Splash Component -------------------------------
+function SplashScreen(props) {
+    const apiKey = localStorage.getItem('shuyuj_api_key');
+    const history = useHistory();
+    console.log("props", props);
+
+    const handleSignup = () => {
+        fetch('/api/signup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Signup failed');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("New user data:", data);
+                localStorage.setItem('shuyuj_api_key', data.api_key);
+                props.setUser({id: data.id, username: data.username, apiKey: data.api_key});
+                history.push('/profile');
+            })
+            .catch(error => {
+                console.error('Error during signup:', error);
+            });
+    };
+
+    const handleCreateRoom = () => {
+        fetch('/api/channel', {
+            method: 'POST',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to create a new room');
+                }
+                return response.json();
+            })
+            .then(newRoom => {
+                history.push(`/channel/${newRoom.id}`);
+                // Add the new room to the existing list of rooms
+                props.setRooms(prevRooms => [...prevRooms, newRoom]);
+            })
+            .catch(error => {
+                console.error('Error creating a new room:', error);
+            });
+    };
+
+    function fetchUserInfo() {
+        if (apiKey) {
+            fetch('/api/profile', {
+                method: 'GET',
+                headers: {
+                    'Authorization': apiKey,
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch user data');
+                    }
+                    return response.json();
+                })
+                .then(userData => {
+                    props.setUser({
+                        id: userData.id,
+                        username: userData.username,
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching user data:', error);
+                });
+        }
+    }
+
     React.useEffect(() => {
         document.title = "Belay Main Page";
-        fetchRooms();
+        props.fetchRooms();
         fetchUserInfo();
-        fetchUnreadMessageCounts();
-        const counts_interval = setInterval(fetchUnreadMessageCounts, 1000);
+        props.fetchUnreadMessageCounts();
+        const counts_interval = setInterval(() => {
+            props.fetchRooms();
+            props.fetchUnreadMessageCounts();
+        }, 1000);
         return () => clearInterval(counts_interval);
     }, []); // The empty array ensures this effect runs only once after the initial render
 
@@ -243,12 +255,12 @@ function SplashScreen(props) {
 
             <h2>Channels</h2>
             <div className="channels">
-                {rooms.length > 0 ? (
+                {props.rooms.length > 0 ? (
                     <div className="channelList">
-                        {rooms.map((room) => (
+                        {props.rooms.map((room) => (
                             <button key={room.id} onClick={() => navigateToChannel(room.id)}>
                                 {room.name}
-                                {unreadCounts[room.id] !== 0 && props.user && <strong>({unreadCounts[room.id]} unread messages)</strong>}
+                                {props.unreadCounts[room.id] !== 0 && props.user && <strong>({props.unreadCounts[room.id]} unread messages)</strong>}
                             </button>
                         ))}
                     </div>
@@ -369,16 +381,16 @@ function LoginForm(props) {
 
 
 // TODO: ------------------------ Profile Component -------------------------------
-function Profile({user, setUser}) {
+function Profile(props) {
     const history = useHistory();
     const apiKey = localStorage.getItem('shuyuj_api_key');
-    const [username, setUsername] = React.useState(user ? user.username : '');
+    const [username, setUsername] = React.useState(props.user ? props.user.username : '');
     const [password, setPassword] = React.useState('');
     const [repeatPassword, setRepeatPassword] = React.useState('');
     const [error, setError] = React.useState('');
 
     const handleLogout = () => {
-        setUser(null);
+        props.setUser(null);
         localStorage.removeItem('shuyuj_api_key');
         history.push("/login");
     };
@@ -400,7 +412,7 @@ function Profile({user, setUser}) {
             })
             .then(updatedUser => {
                 console.log('Username updated to', updatedUser.username);
-                setUser(updatedUser);
+                props.setUser(updatedUser);
                 setUsername(updatedUser.username);
                 alert("Username has been updated!");
             })
@@ -506,7 +518,7 @@ function Profile({user, setUser}) {
 
 
 // TODO: ------------------------ Channel Component -------------------------------
-function ChatChannel() {
+function ChatChannel(props) {
     const {id} = useParams();
     const history = useHistory();
     const apiKey = localStorage.getItem('shuyuj_api_key');
@@ -520,7 +532,6 @@ function ChatChannel() {
     const [selectedMessage, setSelectedMessage] = React.useState(null); // State for the selected message
     const [replies, setReplies] = React.useState([]); // State to hold replies
     const [replyInput, setReplyInput] = React.useState({}); // State for the new reply input
-    const [channelExists, setChannelExists] = React.useState(null); // State to track if the channel exists
 
     const fetchRepliesForMessage = (messageId) => {
         fetch(`/api/message/${messageId}/reply`, {
@@ -662,14 +673,8 @@ function ChatChannel() {
                 'Content-Type': 'application/json'
             }
         })
-            .then(response => {
-                if (response.status === 404) {
-                    setChannelExists(false);
-                }
-                return response.json()
-            })
+            .then(response => response.json())
             .then(data => {
-                setChannelExists(true);
                 setRoom({name: data.name});
                 setNewRoomName(data.name);
             })
@@ -796,7 +801,7 @@ function ChatChannel() {
       return message.match(regex) || [];
     };
 
-    if (!channelExists) {
+    if (props.rooms.length < parseInt(id, 10)) {
         return <NotFoundPage />;
     } else {
         return (
