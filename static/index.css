@@ -439,6 +439,7 @@ h3 {
   flex-direction: column;
   margin-right: 20px;
   overflow-y: auto;
+  padding-top: 10px;
 }
 
 .channel .chat .replies {

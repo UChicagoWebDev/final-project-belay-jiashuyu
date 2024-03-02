@@ -110,7 +110,13 @@ function App() {
                         <Profile user={user} setUser={setUser}/>
                     </Route>
                     <Route path="/channel/:id">
-                        <ChatChannel rooms={rooms}/>
+                        <ChatChannel user={user}
+                                     rooms={rooms}
+                                     setRooms={setRooms}
+                                     unreadCounts={unreadCounts}
+                                     setUnreadCounts={setUnreadCounts}
+                                     fetchRooms={fetchRooms}
+                                     fetchUnreadMessageCounts={fetchUnreadMessageCounts}/>
                     </Route>
                     <Route path="*">
                         <NotFoundPage />
@@ -725,10 +731,14 @@ function ChatChannel(props) {
             alert("Please login before entering to the channels.")
         }
         document.title = `Belay Channel #${id}`;
+        props.fetchRooms();
+        props.fetchUnreadMessageCounts();
         fetch_room_detail();
         fetch_messages();
         updateLastViewed();
         const message_interval = setInterval(() => {
+            props.fetchRooms();
+            props.fetchUnreadMessageCounts();
             fetch_messages();
             fetchRepliesCount();
             if (selectedMessageId) fetchRepliesForMessage(selectedMessageId);
@@ -801,6 +811,11 @@ function ChatChannel(props) {
         history.push('/');
     };
 
+    const navigateToChannel = (channelId) => {
+        history.push(`/channel/${channelId}`);
+        setSelectedMessageId(null);
+    };
+
     // Test image url: https://uchicagowebdev.com/examples/week_1/homecoming.jpeg
     const parseImageUrls = (message) => {
       const regex = /https?:\/\/\S+\.(jpg|jpeg|png|gif)/gi;
@@ -811,6 +826,24 @@ function ChatChannel(props) {
         return <NotFoundPage />;
     } else {
         return (
+        <div className="splash container">
+            <div className="channels">
+                {props.rooms.length > 0 ? (
+                    <div className="channelList">
+                        {props.rooms.map((room) => (
+                            <button key={room.id} onClick={() => navigateToChannel(room.id)}>
+                                {room.name}
+                                {props.unreadCounts[room.id] !== 0 && props.user &&
+                                    <strong>({props.unreadCounts[room.id]} unread messages)</strong>}
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="noRooms">No channels yet! Create the first channel on Belay!</div>
+                )}
+            </div>
+
+
             <div className="channel">
                 <div className="header">
                     <h2><a className="go_to_splash_page" onClick={goToSplash}>Belay</a></h2>
@@ -828,176 +861,180 @@ function ChatChannel(props) {
                                 <h3>
                                     Chatting in <input value={newRoomName}
                                                        onChange={(e) => setNewRoomName(e.target.value)}/>
-                                    <button onClick={handleUpdateRoomName}>Update</button>
-                                </h3>
-                            </div>
-                        )}
-                        Invite users to this chat at:
-                        <a href={`/channel/${id}`}>/channel/{id}</a>
-                    </div>
-                </div>
-
-                <div className="clip">
-                    <div className="container">
-                        <div className="chat">
-
-                            <div className="messages">
-                                {messages.map((message, index) => (
-                                    <div key={index} className="message">
-                                        <div className="author">{message.name}</div>
-                                        <div className="content">
-                                            {message.body}
-                                            {/* Display images after the message content */}
-                                            {parseImageUrls(message.body).map((url, imgIndex) => (
-                                                <img key={imgIndex} src={url} alt="Message Attachment"
-                                                     style={{
-                                                         maxWidth: '200px',
-                                                         maxHeight: '200px',
-                                                         marginTop: '10px'
-                                                     }}/>
-                                            ))}
-                                        </div>
-
-                                        {message.reactions && message.reactions.length > 0 && (
-                                            <div className="reactions">
-                                                {message.reactions.map((reaction, index) => (
-                                                    <span key={index} className="reaction"
-                                                          onMouseEnter={(e) => {
-                                                              // Show tooltip
-                                                              e.currentTarget.querySelector('.users').classList.add('show');
-                                                          }}
-                                                          onMouseLeave={(e) => {
-                                                              // Hide tooltip
-                                                              e.currentTarget.querySelector('.users').classList.remove('show');
-                                                          }}>
-                                                    {reaction.emoji} {reaction.users.split(',').length}&nbsp;
-                                                        <span className="users">
-                                                        {reaction.users}
-                                                    </span>
-                                                </span>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        <div className="message-reactions">
-                                            {['😀', '❤️', '👍'].map(emoji => (
-                                                <button key={emoji}
-                                                        onClick={() => handleAddReaction(message.id, emoji)}>{emoji}</button>
-                                            ))}
-                                        </div>
-
-                                        {repliesCount[message.id] > 0 && (
-                                            <button onClick={() => handleShowReplies(message.id)}>
-                                                Replies: {repliesCount[message.id]}
-                                            </button>
-                                        )}
-                                        <button onClick={() => handleShowReplies(message.id)}>Reply!</button>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {selectedMessageId && (
-                                <div className="replies">
-                                    <h3>Message</h3>
-                                    <div className="message">
-                                        <div className="author">{selectedMessage.name}</div>
-                                        <div className="content">
-                                            {selectedMessage.body}
-                                            {/* Display images after the message content */}
-                                            {parseImageUrls(selectedMessage.body).map((url, imgIndex) => (
-                                                <img key={imgIndex} src={url} alt="Message Attachment"
-                                                     style={{
-                                                         maxWidth: '100px',
-                                                         maxHeight: '100px',
-                                                         marginTop: '10px'
-                                                     }}/>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <h3>Replies</h3>
-                                    {replies.length > 0 ? (
-                                        replies.map((reply, index) => (
-                                            <div key={index} className="reply">
-                                                <div className="author">{reply.name}</div>
-                                                <div className="content">
-                                                    {reply.body}
-                                                    {/* Display images after the reply content */}
-                                                    {parseImageUrls(reply.body).map((url, imgIndex) => (
-                                                        <img key={imgIndex} src={url} alt="Message Attachment"
-                                                             style={{
-                                                                 maxWidth: '100px',
-                                                                 maxHeight: '100px',
-                                                                 marginTop: '10px'
-                                                             }}/>
-                                                    ))}
-                                                </div>
-
-                                                {reply.reactions && reply.reactions.length > 0 && (
-                                                    <div className="reactions">
-                                                        {reply.reactions.map((reaction, index) => (
-                                                            <span key={index} className="reaction"
-                                                                  onMouseEnter={(e) => {
-                                                                      // Show tooltip
-                                                                      e.currentTarget.querySelector('.users').classList.add('show');
-                                                                  }}
-                                                                  onMouseLeave={(e) => {
-                                                                      // Hide tooltip
-                                                                      e.currentTarget.querySelector('.users').classList.remove('show');
-                                                                  }}>
-                                                            {reaction.emoji} {reaction.users.split(',').length}&nbsp;
-                                                                <span className="users">
-                                                                {reaction.users}
-                                                            </span>
-                                                        </span>
-                                                        ))}
-                                                    </div>
-                                                )}
-
-                                                <div className="message-reactions">
-                                                    {['😀', '❤️', '👍'].map(emoji => (
-                                                        <button key={emoji}
-                                                                onClick={() => handleAddReaction(reply.id, emoji)}>{emoji}</button>
-                                                    ))}
-                                                </div>
-
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p>No replies yet.</p>
-                                    )}
-                                    <div className="comment_box">
-                                        <label htmlFor="comment">What do you want to reply?</label>
-                                        <textarea
-                                            name="comment"
-                                            value={replyInput[selectedMessageId] || ''}
-                                            onChange={(e) => setReplyInput({
-                                                ...replyInput,
-                                                [selectedMessageId]: e.target.value
-                                            })}
-                                        ></textarea>
-                                        <button onClick={(e) => handlePostReply(e, selectedMessageId)}
-                                                className="post_room_messages">Post
-                                        </button>
-                                    </div>
+                                        <button onClick={handleUpdateRoomName}>Update</button>
+                                    </h3>
                                 </div>
                             )}
-
-                            {!selectedMessageId && (<div></div>)}
-                            <div className="comment_box">
-                                <label htmlFor="comment">What do you want to say?</label>
-                                <textarea name="comment" value={newMessage}
-                                          onChange={(e) => setNewMessage(e.target.value)}></textarea>
-                                <button onClick={handlePostMessage} className="post_room_messages">Post</button>
-                            </div>
+                            Invite users to this chat at:
+                            <a href={`/channel/${id}`}>/channel/{id}</a>
                         </div>
+                    </div>
 
-                        {!messages.length && (
-                            <div className="noMessages">
-                                <h2>Oops, we can't find that room!</h2>
-                                <p><a onClick={goToSplash}>Let's go home and try again.</a></p>
+                    <div className="clip">
+                        <div className="container">
+                            <div className="chat">
+
+                                <div className="messages">
+                                    {messages.map((message, index) => (
+                                        <div key={index} className="message">
+                                            <div className="author">{message.name}</div>
+                                            <div className="content">
+                                                {message.body}
+                                                {/* Display images after the message content */}
+                                                {parseImageUrls(message.body).map((url, imgIndex) => (
+                                                    <img key={imgIndex} src={url} alt="Message Attachment"
+                                                         style={{
+                                                             maxWidth: '200px',
+                                                             maxHeight: '200px',
+                                                             marginTop: '10px'
+                                                         }}/>
+                                                ))}
+                                            </div>
+
+                                            {message.reactions && message.reactions.length > 0 && (
+                                                <div className="reactions">
+                                                    {message.reactions.map((reaction, index) => (
+                                                        <span key={index} className="reaction"
+                                                              onMouseEnter={(e) => {
+                                                                  // Show tooltip
+                                                                  e.currentTarget.querySelector('.users').classList.add('show');
+                                                              }}
+                                                              onMouseLeave={(e) => {
+                                                                  // Hide tooltip
+                                                                  e.currentTarget.querySelector('.users').classList.remove('show');
+                                                              }}>
+                                                        {reaction.emoji} {reaction.users.split(',').length}&nbsp;
+                                                            <span className="users">
+                                                            {reaction.users}
+                                                        </span>
+                                                    </span>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <div className="message-reactions">
+                                                {['😀', '❤️', '👍'].map(emoji => (
+                                                    <button key={emoji}
+                                                            onClick={() => handleAddReaction(message.id, emoji)}>{emoji}</button>
+                                                ))}
+                                            </div>
+
+                                            {repliesCount[message.id] > 0 ? (
+                                                <button onClick={() => handleShowReplies(message.id)}>
+                                                    Replies: {repliesCount[message.id]}
+                                                </button>
+                                            ) : (
+                                                <button onClick={() => handleShowReplies(message.id)}>Reply!</button>
+                                            )}
+
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {selectedMessageId && (
+                                    <div className="replies">
+                                        <button onClick={() => navigateToChannel(id)}>close</button>
+                                        <h3>Message</h3>
+                                        <div className="message">
+                                            <div className="author">{selectedMessage.name}</div>
+                                            <div className="content">
+                                                {selectedMessage.body}
+                                                {/* Display images after the message content */}
+                                                {parseImageUrls(selectedMessage.body).map((url, imgIndex) => (
+                                                    <img key={imgIndex} src={url} alt="Message Attachment"
+                                                         style={{
+                                                             maxWidth: '100px',
+                                                             maxHeight: '100px',
+                                                             marginTop: '10px'
+                                                         }}/>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <h3>Replies</h3>
+                                        {replies.length > 0 ? (
+                                            replies.map((reply, index) => (
+                                                <div key={index} className="reply">
+                                                    <div className="author">{reply.name}</div>
+                                                    <div className="content">
+                                                        {reply.body}
+                                                        {/* Display images after the reply content */}
+                                                        {parseImageUrls(reply.body).map((url, imgIndex) => (
+                                                            <img key={imgIndex} src={url} alt="Message Attachment"
+                                                                 style={{
+                                                                     maxWidth: '100px',
+                                                                     maxHeight: '100px',
+                                                                     marginTop: '10px'
+                                                                 }}/>
+                                                        ))}
+                                                    </div>
+
+                                                    {reply.reactions && reply.reactions.length > 0 && (
+                                                        <div className="reactions">
+                                                            {reply.reactions.map((reaction, index) => (
+                                                                <span key={index} className="reaction"
+                                                                      onMouseEnter={(e) => {
+                                                                          // Show tooltip
+                                                                          e.currentTarget.querySelector('.users').classList.add('show');
+                                                                      }}
+                                                                      onMouseLeave={(e) => {
+                                                                          // Hide tooltip
+                                                                          e.currentTarget.querySelector('.users').classList.remove('show');
+                                                                      }}>
+                                                                {reaction.emoji} {reaction.users.split(',').length}&nbsp;
+                                                                    <span className="users">
+                                                                    {reaction.users}
+                                                                </span>
+                                                            </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    <div className="message-reactions">
+                                                        {['😀', '❤️', '👍'].map(emoji => (
+                                                            <button key={emoji}
+                                                                    onClick={() => handleAddReaction(reply.id, emoji)}>{emoji}</button>
+                                                        ))}
+                                                    </div>
+
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p>No replies yet.</p>
+                                        )}
+                                        <div className="comment_box">
+                                            <label htmlFor="comment">What do you want to reply?</label>
+                                            <textarea
+                                                name="comment"
+                                                value={replyInput[selectedMessageId] || ''}
+                                                onChange={(e) => setReplyInput({
+                                                    ...replyInput,
+                                                    [selectedMessageId]: e.target.value
+                                                })}
+                                            ></textarea>
+                                            <button onClick={(e) => handlePostReply(e, selectedMessageId)}
+                                                    className="post_room_messages">Post
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {!selectedMessageId && (<div></div>)}
+                                <div className="comment_box">
+                                    <label htmlFor="comment">What do you want to say?</label>
+                                    <textarea name="comment" value={newMessage}
+                                              onChange={(e) => setNewMessage(e.target.value)}></textarea>
+                                    <button onClick={handlePostMessage} className="post_room_messages">Post</button>
+                                </div>
                             </div>
-                        )}
+
+                            {!messages.length && (
+                                <div className="noMessages">
+                                    <h2>Oops, we can't find that room!</h2>
+                                    <p><a onClick={goToSplash}>Let's go home and try again.</a></p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1006,6 +1043,7 @@ function ChatChannel(props) {
 }
 
 
+// TODO: ------------------------ 404 Component -------------------------------
 function NotFoundPage() {
     document.title = "Belay 404 Page";
     return (
