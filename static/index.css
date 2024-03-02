@@ -1,11 +1,11 @@
-/* Global styles */
+/* TODO: ------------- Global Styles ------------ */
 body {
   background-color: #333366;
   margin: 0;
 }
 
 .container {
-  width: 900px;
+  width: 1200px;
   height: 100%;
   margin: auto;
   padding: 0 30px 0 30px;
@@ -185,17 +185,40 @@ button:hover {
   padding-top: 20px;
 }
 
-/* Splash screen */
-.splash .splashHeader {
+
+/* TODO: ------------- Splash screen ------------ */
+.splash.container {
+  position: relative;
   display: flex;
+  flex-direction: row; /* Aligns children (channels and hero) in a row */
+  align-items: start; /* Aligns items to the start of the cross axis */
+  height: 100vh; /* Full viewport height */
+}
+
+.channels {
+  flex: 1; /* Allows the channels to grow and take up available space */
+  padding: 20px; /* Adds some spacing around the channel list */
+}
+
+.container .splashHeader {
+  position: absolute; /* Positions the splashHeader out of the normal document flow */
+  right: 0; /* Aligns the splashHeader to the right */
+  top: 0; /* Aligns the splashHeader to the top */
+  padding: 0; /* Adds some spacing inside the splashHeader */
+}
+
+.splashHeader {
+  margin-left: auto; /* Moves the splashHeader to the right */
+  padding: 10px; /* Adds some padding around the content */
 }
 
 .splash .hero {
-  margin: auto;
-  width: 600px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 2fr 1fr;
+  flex: 2; /* Allows the hero section to take twice the space of the channels */
+  display: flex;
+  flex-direction: column; /* Aligns hero content in a column */
+  align-items: center; /* Centers items horizontally in the container */
+  justify-content: center; /* Centers items vertically in the container */
+  padding: 20px; /* Adds some spacing around the hero content */
 }
 
 .splash h1,
@@ -272,11 +295,42 @@ h3 {
   box-shadow: 0 2px 5px magenta;
 }
 
+
+/* channelList */
 .splash .channelList {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+  width: 250px; /* Set a fixed width for the room list */
+  max-height: 100vh; /* Set the maximum height to the viewport height */
+  overflow-y: auto; /* Allows scrolling within the room list */
+  margin: 0; /* Remove any default margins */
+  padding: 20px; /* Add padding inside the room list */
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2); /* Optional: Add shadow to create depth */
 }
+
+.channelList button {
+    display: block; /* Make each button a block element */
+    width: 100%; /* Full width of the container */
+    padding: 10px; /* Add some padding */
+    margin-bottom: 8px; /* Space between buttons */
+    text-align: left; /* Align text to the left */
+    border: none; /* Remove border */
+    background-color: transparent; /* Transparent background */
+    cursor: pointer; /* Change cursor to pointer */
+    color: #0c70bc;
+    font-size: 20px;
+    transition: background-color 250ms, transform 250ms; /* Smooth transition for hover effects */
+    text-shadow: none; /* Removes text blur */
+    box-shadow: none; /* Removes box blur */
+    filter: none;
+}
+
+.channelList button:hover {
+    background-color: #e8e8e8; /* Slight background color on hover */
+    transform: translateX(10px); /* Shift to the right on hover */
+}
+
 
 .splash .channelList > a {
   display: block;
@@ -305,7 +359,8 @@ h3 {
   transform: scale(1.025);
 }
 
-/* Profile screen */
+
+/* TODO: ------------- Profile screen ------------ */
 .profile {
   display: block;
 }
@@ -348,10 +403,10 @@ h3 {
   padding: 12px;
 }
 
-/* Channel screen */
+/* TODO: ------------- Channel screen ------------ */
 .channel .chat {
   display: grid !important;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 3fr 2fr;
   height: 100%;
 }
 
@@ -447,7 +502,8 @@ h3 {
     max-height: 300px;
 }
 
-/* 404 page */
+
+/* TODO: ------------- 404 Page ------------ */
 .notFound h1 {
   margin: 20px 20px -300px 20px;
   font-size: 500px;
@@ -459,7 +515,7 @@ h3 {
   text-shadow: 0 0 6px white;
 }
 
-/* emoji */
+/* TODO: ------------- Emoji ------------ */
 .reaction .users {
     display: none;
     position: absolute;

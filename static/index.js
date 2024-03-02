@@ -227,6 +227,7 @@ function SplashScreen(props) {
 
     return (
         <div className="splash container">
+
             <div className="splashHeader">
                 <div className="loginHeader">
                     {props.user ? (
@@ -238,6 +239,22 @@ function SplashScreen(props) {
                         <button onClick={handleLoginClick}>Login</button>
                     )}
                 </div>
+            </div>
+
+            <div className="channels">
+                {props.rooms.length > 0 ? (
+                    <div className="channelList">
+                        {props.rooms.map((room) => (
+                            <button key={room.id} onClick={() => navigateToChannel(room.id)}>
+                                {room.name}
+                                {props.unreadCounts[room.id] !== 0 && props.user &&
+                                    <strong>({props.unreadCounts[room.id]} unread messages)</strong>}
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="noRooms">No channels yet! Create the first channel on Belay!</div>
+                )}
             </div>
 
             <div className="hero">
@@ -253,21 +270,6 @@ function SplashScreen(props) {
                 )}
             </div>
 
-            <h2>Channels</h2>
-            <div className="channels">
-                {props.rooms.length > 0 ? (
-                    <div className="channelList">
-                        {props.rooms.map((room) => (
-                            <button key={room.id} onClick={() => navigateToChannel(room.id)}>
-                                {room.name}
-                                {props.unreadCounts[room.id] !== 0 && props.user && <strong>({props.unreadCounts[room.id]} unread messages)</strong>}
-                            </button>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="noRooms">No channels yet! Create the first channel on Belay!</div>
-                )}
-            </div>
         </div>
     );
 }
@@ -752,6 +754,10 @@ function ChatChannel(props) {
 
     const handlePostMessage = (event) => {
         event.preventDefault(); // Prevent form submission from reloading the page
+        if (!newMessage) {
+            alert('Message cannot be empty');
+            return;
+        }
         fetch(`/api/channel/${id}/messages`, {
             method: 'POST',
             headers: {
