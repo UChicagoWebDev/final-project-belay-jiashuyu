@@ -71,7 +71,6 @@ function App() {
 function SplashScreen(props) {
     const [rooms, setRooms] = React.useState([]);
     const [unreadCounts, setUnreadCounts] = React.useState({});
-    const [isLoading, setIsLoading] = React.useState(true);
     const apiKey = localStorage.getItem('shuyuj_api_key');
     const history = useHistory();
     console.log("props", props);
@@ -116,7 +115,6 @@ function SplashScreen(props) {
                 history.push(`/channel/${newRoom.id}`);
                 // Add the new room to the existing list of rooms
                 setRooms(prevRooms => [...prevRooms, newRoom]);
-
             })
             .catch(error => {
                 console.error('Error creating a new room:', error);
@@ -152,7 +150,6 @@ function SplashScreen(props) {
 
     function fetchRooms() {
         console.log("splashScreen apiKey", apiKey);
-
         fetch('/api/channel', {
             method: 'GET',
             headers: {
@@ -168,11 +165,9 @@ function SplashScreen(props) {
             })
             .then(data => {
                 setRooms(data);
-                setIsLoading(false);
             })
             .catch(error => {
                 console.error('There has been a problem with your fetch operation:', error);
-                setIsLoading(false);
             });
     }
 
@@ -248,7 +243,7 @@ function SplashScreen(props) {
 
             <h2>Channels</h2>
             <div className="channels">
-                {!isLoading && rooms.length > 0 ? (
+                {rooms.length > 0 ? (
                     <div className="channelList">
                         {rooms.map((room) => (
                             <button key={room.id} onClick={() => navigateToChannel(room.id)}>
