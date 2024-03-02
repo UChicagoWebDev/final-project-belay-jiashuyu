@@ -831,7 +831,8 @@ function ChatChannel(props) {
                 {props.rooms.length > 0 ? (
                     <div className="channelList">
                         {props.rooms.map((room) => (
-                            <button key={room.id} onClick={() => navigateToChannel(room.id)}>
+                            <button key={room.id} onClick={() => navigateToChannel(room.id)}
+                                    style={{ backgroundColor: room.id === parseInt(id, 10) ? 'orange' : 'transparent' }}>
                                 {room.name}
                                 {props.unreadCounts[room.id] !== 0 && props.user &&
                                     <strong>({props.unreadCounts[room.id]} unread messages)</strong>}
