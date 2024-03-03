@@ -9,9 +9,17 @@ const {
 
 // TODO: ------------------------ App Component -------------------------------
 function App() {
-    const [user, setUser] = React.useState(null);
-    const [rooms, setRooms] = React.useState([]);
-    const [unreadCounts, setUnreadCounts] = React.useState({});
+    const [user, setUser] = React.useState(null); // State to hold current user info
+    const [rooms, setRooms] = React.useState([]); // State to hold current room list
+    const [unreadCounts, setUnreadCounts] = React.useState({}); // State to hold unread counts for each room
+    const [room, setRoom] = React.useState({name: ''}); // State to hold room details
+    const [isEditing, setIsEditing] = React.useState(false); // State to toggle edit mode
+    const [newRoomName, setNewRoomName] = React.useState(''); // State for the new room name input
+    const [messages, setMessages] = React.useState([]); // State to hold messages
+    const [newMessage, setNewMessage] = React.useState(''); // State for the new message input
+    const [repliesCount, setRepliesCount] = React.useState({}); // State for the reply counts
+    const [selectedMessageId, setSelectedMessageId] = React.useState(null); // State for the selected message id
+    const [selectedMessage, setSelectedMessage] = React.useState(null); // State for the selected message
     const apiKey = localStorage.getItem('shuyuj_api_key');
 
     const handleLogin = (username, password) => {
@@ -89,17 +97,191 @@ function App() {
         }
     };
 
+    const updateLastViewed = (id) => {
+        fetch(`/api/channel/${id}/messages`, {
+            method: 'GET',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                const lastMessageId = data[data.length - 1].id;
+                // Update last viewed message
+                fetch(`/api/channel/${id}/last-viewed`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': apiKey,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ last_message_id_seen: lastMessageId }),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to update last viewed message');
+                    }
+                    return response.json();
+                })
+                .then(() => console.log('Last viewed message updated successfully'))
+                .catch(error => console.error('Failed to update last viewed message:', error));
+            }
+        })
+        .catch(error => console.error("Failed to fetch messages:", error));
+    };
+
+    const handleEditClick = () => {
+        setIsEditing(true);
+    };
+
+    const fetchRepliesCount = (id) => {
+        fetch(`/api/channel/${id}/count-replies`, {
+            method: 'GET',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(response => response.json())
+            .then(data => {
+                const repliesMap = data.reduce((acc, item) => {
+                    acc[item.message_id] = item.reply_count;
+                    return acc;
+                }, {});
+                setRepliesCount(repliesMap);
+            })
+            .catch(error => console.error("Failed to fetch replies count:", error));
+    };
+
+    const fetch_room_detail =(id) => {
+        fetch(`/api/channel/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                setRoom({name: data.name});
+                setNewRoomName(data.name);
+            })
+            .catch(error => console.error("Failed to fetch room details:", error));
+    }
+
+    const fetch_messages = (id) => {
+        fetch(`/api/channel/${id}/messages`, {
+            method: 'GET',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(messagesData => {
+            console.log("Fetched messages: ", messagesData);
+
+            // Fetch reactions for each message
+            const fetchReactionsPromises = messagesData.map(message =>
+                fetch(`/api/message/${message.id}/reaction`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': apiKey,
+                        'Content-Type': 'application/json'
+                    }
+                }).then(response => response.json())
+            );
+
+            // Wait for all reactions to be fetched
+            Promise.all(fetchReactionsPromises).then(reactionsData => {
+                const messagesWithReactions = messagesData.map((message, index) => ({
+                    ...message,
+                    reactions: reactionsData[index]
+                }));
+
+                setMessages(messagesWithReactions);
+            });
+        })
+        .catch(error => console.error("Failed to fetch messages:", error));
+    };
+
+    const handleUpdateRoomName = (id) => {
+        fetch(`/api/channel/${id}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({name: newRoomName}),
+        })
+            .then(() => {
+                setRoom({name: newRoomName});
+                setIsEditing(false);
+            })
+            .catch(error => console.error("Failed to update room name:", error));
+    };
+
+    const handlePostMessage = (event, id) => {
+        event.preventDefault(); // Prevent form submission from reloading the page
+        if (!newMessage) {
+            alert('Message cannot be empty');
+            return;
+        }
+        fetch(`/api/channel/${id}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({body: newMessage}),
+        })
+            .then(() => {
+                setMessages([...messages, {body: newMessage}]);
+                setNewMessage(''); // Clear input field
+                updateLastViewed(id);
+            })
+            .catch(error => console.error("Failed to post message:", error));
+    };
+
+    const handleAddReaction = (messageId, emoji) => {
+        fetch(`/api/message/${messageId}/reaction`, {
+            method: 'POST',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({emoji}),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to add reaction');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.message === "Reaction already exists") {
+                alert("You have already added this emoji :)");
+            }
+        })
+        .catch(error => console.error('Error adding reaction:', error));
+    };
+
+    // Test image url: https://uchicagowebdev.com/examples/week_1/homecoming.jpeg
+    const parseImageUrls = (message) => {
+      const regex = /https?:\/\/\S+\.(jpg|jpeg|png|gif)/gi;
+      return message.match(regex) || [];
+    };
+
     return (
         <BrowserRouter>
             <div>
                 <Switch>
                     <Route exact path="/">
-                        <SplashScreen user={user}
-                                      setUser={setUser}
-                                      rooms={rooms}
-                                      setRooms={setRooms}
-                                      unreadCounts={unreadCounts}
-                                      setUnreadCounts={setUnreadCounts}
+                        <SplashScreen user={user} setUser={setUser}
+                                      rooms={rooms} setRooms={setRooms}
+                                      unreadCounts={unreadCounts} setUnreadCounts={setUnreadCounts}
+                                      selectedMessageId={selectedMessageId} setSelectedMessageId={setSelectedMessageId}
                                       fetchRooms={fetchRooms}
                                       fetchUnreadMessageCounts={fetchUnreadMessageCounts}/>
                     </Route>
@@ -110,13 +292,28 @@ function App() {
                         <Profile user={user} setUser={setUser}/>
                     </Route>
                     <Route path="/channel/:id">
-                        <ChatChannel user={user}
-                                     rooms={rooms}
-                                     setRooms={setRooms}
-                                     unreadCounts={unreadCounts}
-                                     setUnreadCounts={setUnreadCounts}
+                        <ChatChannel user={user} setUser={setUser}
+                                     rooms={rooms} setRooms={setRooms}
+                                     unreadCounts={unreadCounts} setUnreadCounts={setUnreadCounts}
+                                     room={room} setRoom={setRoom}
+                                     isEditing={isEditing} setIsEditing={setIsEditing}
+                                     newRoomName={newRoomName} setNewRoomName={setNewRoomName}
+                                     messages={messages} setMessages={setMessages}
+                                     newMessage={newMessage} setNewMessage={setNewMessage}
+                                     repliesCount={repliesCount} setRepliesCount={setRepliesCount}
+                                     selectedMessageId={selectedMessageId} setSelectedMessageId={setSelectedMessageId}
+                                     selectedMessage={selectedMessage} setSelectedMessage={setSelectedMessage}
                                      fetchRooms={fetchRooms}
-                                     fetchUnreadMessageCounts={fetchUnreadMessageCounts}/>
+                                     fetchUnreadMessageCounts={fetchUnreadMessageCounts}
+                                     updateLastViewed={updateLastViewed}
+                                     handleEditClick={handleEditClick}
+                                     fetchRepliesCount={fetchRepliesCount}
+                                     fetch_room_detail={fetch_room_detail}
+                                     fetch_messages={fetch_messages}
+                                     handleUpdateRoomName={handleUpdateRoomName}
+                                     handlePostMessage={handlePostMessage}
+                                     handleAddReaction={handleAddReaction}
+                                     parseImageUrls={parseImageUrls}/>
                     </Route>
                     <Route path="*">
                         <NotFoundPage />
@@ -174,6 +371,7 @@ function SplashScreen(props) {
                 history.push(`/channel/${newRoom.id}`);
                 // Add the new room to the existing list of rooms
                 props.setRooms(prevRooms => [...prevRooms, newRoom]);
+                props.setSelectedMessageId(null);
             })
             .catch(error => {
                 console.error('Error creating a new room:', error);
@@ -340,6 +538,14 @@ function LoginForm(props) {
     const goToSplash = () => {
         history.push('/');
     }
+
+    React.useEffect(() => {
+        const apiKey = localStorage.getItem('shuyuj_api_key');
+        if (apiKey) {
+            history.push('/profile');
+        }
+        document.title = "Belay Login Page";
+    }, []); // The empty array ensures this effect runs only once after the initial render
 
     return (
         <div className="login">
@@ -527,17 +733,9 @@ function Profile(props) {
 
 // TODO: ------------------------ Channel Component -------------------------------
 function ChatChannel(props) {
-    const {id} = useParams();
+    const { id } = useParams();
     const history = useHistory();
     const apiKey = localStorage.getItem('shuyuj_api_key');
-    const [room, setRoom] = React.useState({name: ''}); // State to hold room details
-    const [isEditing, setIsEditing] = React.useState(false); // State to toggle edit mode
-    const [newRoomName, setNewRoomName] = React.useState(''); // State for the new room name input
-    const [messages, setMessages] = React.useState([]); // State to hold messages
-    const [newMessage, setNewMessage] = React.useState(''); // State for the new message input
-    const [repliesCount, setRepliesCount] = React.useState({}); // State for the reply counts
-    const [selectedMessageId, setSelectedMessageId] = React.useState(null); // State for the selected message id
-    const [selectedMessage, setSelectedMessage] = React.useState(null); // State for the selected message
     const [replies, setReplies] = React.useState([]); // State to hold replies
     const [replyInput, setReplyInput] = React.useState({}); // State for the new reply input
 
@@ -578,9 +776,9 @@ function ChatChannel(props) {
     };
 
     const handleShowReplies = (messageId) => {
-        const message = messages.find(m => m.id === messageId);
-        setSelectedMessage(message);
-        setSelectedMessageId(messageId);
+        const message = props.messages.find(m => m.id === messageId);
+        props.setSelectedMessage(message);
+        props.setSelectedMessageId(messageId);
         fetchRepliesForMessage(messageId);
     };
 
@@ -615,116 +813,6 @@ function ChatChannel(props) {
             .catch(error => console.error('Failed to post reply:', error));
     };
 
-    const updateLastViewed = () => {
-        fetch(`/api/channel/${id}/messages`, {
-            method: 'GET',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            setMessages(data);
-            if (data.length > 0) {
-                const lastMessageId = data[data.length - 1].id;
-                // Update last viewed message
-                fetch(`/api/channel/${id}/last-viewed`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': apiKey,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ last_message_id_seen: lastMessageId }),
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to update last viewed message');
-                    }
-                    return response.json();
-                })
-                .then(() => console.log('Last viewed message updated successfully'))
-                .catch(error => console.error('Failed to update last viewed message:', error));
-            }
-        })
-        .catch(error => console.error("Failed to fetch messages:", error));
-    };
-
-    const handleEditClick = () => {
-        setIsEditing(true);
-    };
-
-    const fetchRepliesCount = () => {
-        fetch(`/api/channel/${id}/count-replies`, {
-            method: 'GET',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(response => response.json())
-            .then(data => {
-                const repliesMap = data.reduce((acc, item) => {
-                    acc[item.message_id] = item.reply_count;
-                    return acc;
-                }, {});
-                setRepliesCount(repliesMap);
-            })
-            .catch(error => console.error("Failed to fetch replies count:", error));
-    };
-
-    const fetch_room_detail =() => {
-        fetch(`/api/channel/${id}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json'
-            }
-        })
-            .then(response => response.json())
-            .then(data => {
-                setRoom({name: data.name});
-                setNewRoomName(data.name);
-            })
-            .catch(error => console.error("Failed to fetch room details:", error));
-    }
-
-    const fetch_messages = () => {
-        fetch(`/api/channel/${id}/messages`, {
-            method: 'GET',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(messagesData => {
-            console.log("Fetched messages: ", messagesData);
-
-            // Fetch reactions for each message
-            const fetchReactionsPromises = messagesData.map(message =>
-                fetch(`/api/message/${message.id}/reaction`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': apiKey,
-                        'Content-Type': 'application/json'
-                    }
-                }).then(response => response.json())
-            );
-
-            // Wait for all reactions to be fetched
-            Promise.all(fetchReactionsPromises).then(reactionsData => {
-                const messagesWithReactions = messagesData.map((message, index) => ({
-                    ...message,
-                    reactions: reactionsData[index]
-                }));
-
-                setMessages(messagesWithReactions);
-            });
-        })
-        .catch(error => console.error("Failed to fetch messages:", error));
-    };
-
     React.useEffect(() => {
         if (!apiKey) {
             history.push('/login');
@@ -733,79 +821,18 @@ function ChatChannel(props) {
         document.title = `Belay Channel #${id}`;
         props.fetchRooms();
         props.fetchUnreadMessageCounts();
-        fetch_room_detail();
-        fetch_messages();
-        updateLastViewed();
+        props.fetch_room_detail(id);
+        props.fetch_messages(id);
+        props.updateLastViewed(id);
         const message_interval = setInterval(() => {
             props.fetchRooms();
             props.fetchUnreadMessageCounts();
-            fetch_messages();
-            fetchRepliesCount();
-            if (selectedMessageId) fetchRepliesForMessage(selectedMessageId);
+            props.fetch_messages(id);
+            props.fetchRepliesCount(id);
+            if (props.selectedMessageId) fetchRepliesForMessage(props.selectedMessageId);
         }, 500);
         return () => clearInterval(message_interval);
-    }, [id, selectedMessageId]); // Re-run the effect if the room ID and selected room id changes
-
-    const handleUpdateRoomName = () => {
-        fetch(`/api/channel/${id}`, {
-            method: 'POST',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({name: newRoomName}),
-        })
-            .then(() => {
-                setRoom({name: newRoomName});
-                setIsEditing(false);
-            })
-            .catch(error => console.error("Failed to update room name:", error));
-    };
-
-    const handlePostMessage = (event) => {
-        event.preventDefault(); // Prevent form submission from reloading the page
-        if (!newMessage) {
-            alert('Message cannot be empty');
-            return;
-        }
-        fetch(`/api/channel/${id}/messages`, {
-            method: 'POST',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({body: newMessage}),
-        })
-            .then(() => {
-                setMessages([...messages, {body: newMessage}]);
-                setNewMessage(''); // Clear input field
-                updateLastViewed();
-            })
-            .catch(error => console.error("Failed to post message:", error));
-    };
-
-    const handleAddReaction = (messageId, emoji) => {
-        fetch(`/api/message/${messageId}/reaction`, {
-            method: 'POST',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({emoji}),
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to add reaction');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.message === "Reaction already exists") {
-                alert("You have already added this emoji :)");
-            }
-        })
-        .catch(error => console.error('Error adding reaction:', error));
-    };
+    }, [id, props.selectedMessageId]); // Re-run the effect if the room ID and selected room id changes
 
     const goToSplash = () => {
         history.push('/');
@@ -813,13 +840,7 @@ function ChatChannel(props) {
 
     const navigateToChannel = (channelId) => {
         history.push(`/channel/${channelId}`);
-        setSelectedMessageId(null);
-    };
-
-    // Test image url: https://uchicagowebdev.com/examples/week_1/homecoming.jpeg
-    const parseImageUrls = (message) => {
-      const regex = /https?:\/\/\S+\.(jpg|jpeg|png|gif)/gi;
-      return message.match(regex) || [];
+        props.setSelectedMessageId(null);
     };
 
     if (props.rooms.length < parseInt(id, 10)) {
@@ -849,20 +870,20 @@ function ChatChannel(props) {
                 <div className="header">
                     <h2><a className="go_to_splash_page" onClick={goToSplash}>Belay</a></h2>
                     <div className="channelDetail">
-                        {!isEditing && room ? (
+                        {!props.isEditing && props.room ? (
                             <div className="displayRoomName">
                                 <h3 className="curr_room_name">
-                                    Chatting in <strong>{room.name}</strong>
-                                    <a onClick={handleEditClick}><span
+                                    Chatting in <strong>{props.room.name}</strong>
+                                    <a onClick={props.handleEditClick}><span
                                         className="material-symbols-outlined md-18">edit</span></a>
                                 </h3>
                             </div>
                         ) : (
                             <div className="editRoomName">
                                 <h3>
-                                    Chatting in <input value={newRoomName}
-                                                       onChange={(e) => setNewRoomName(e.target.value)}/>
-                                        <button onClick={handleUpdateRoomName}>Update</button>
+                                    Chatting in <input value={props.newRoomName}
+                                                       onChange={(e) => props.setNewRoomName(e.target.value)}/>
+                                        <button onClick={() => props.handleUpdateRoomName(id)}>Update</button>
                                     </h3>
                                 </div>
                             )}
@@ -876,13 +897,13 @@ function ChatChannel(props) {
                             <div className="chat">
 
                                 <div className="messages">
-                                    {messages.map((message, index) => (
+                                    {props.messages.map((message, index) => (
                                         <div key={index} className="message">
                                             <div className="author">{message.name}</div>
                                             <div className="content">
                                                 {message.body}
                                                 {/* Display images after the message content */}
-                                                {parseImageUrls(message.body).map((url, imgIndex) => (
+                                                {props.parseImageUrls(message.body).map((url, imgIndex) => (
                                                     <img key={imgIndex} src={url} alt="Message Attachment"
                                                          style={{
                                                              maxWidth: '200px',
@@ -916,13 +937,13 @@ function ChatChannel(props) {
                                             <div className="message-reactions">
                                                 {['😀', '❤️', '👍'].map(emoji => (
                                                     <button key={emoji}
-                                                            onClick={() => handleAddReaction(message.id, emoji)}>{emoji}</button>
+                                                            onClick={() => props.handleAddReaction(message.id, emoji)}>{emoji}</button>
                                                 ))}
                                             </div>
 
-                                            {repliesCount[message.id] > 0 ? (
+                                            {props.repliesCount[message.id] > 0 ? (
                                                 <button onClick={() => handleShowReplies(message.id)}>
-                                                    Replies: {repliesCount[message.id]}
+                                                    Replies: {props.repliesCount[message.id]}
                                                 </button>
                                             ) : (
                                                 <button onClick={() => handleShowReplies(message.id)}>Reply!</button>
@@ -932,16 +953,16 @@ function ChatChannel(props) {
                                     ))}
                                 </div>
 
-                                {selectedMessageId && (
+                                {props.selectedMessageId && (
                                     <div className="replies">
                                         <button onClick={() => navigateToChannel(id)}>close</button>
                                         <h3>Message</h3>
                                         <div className="message">
-                                            <div className="author">{selectedMessage.name}</div>
+                                            <div className="author">{props.selectedMessage.name}</div>
                                             <div className="content">
-                                                {selectedMessage.body}
+                                                {props.selectedMessage.body}
                                                 {/* Display images after the message content */}
-                                                {parseImageUrls(selectedMessage.body).map((url, imgIndex) => (
+                                                {props.parseImageUrls(props.selectedMessage.body).map((url, imgIndex) => (
                                                     <img key={imgIndex} src={url} alt="Message Attachment"
                                                          style={{
                                                              maxWidth: '100px',
@@ -960,7 +981,7 @@ function ChatChannel(props) {
                                                     <div className="content">
                                                         {reply.body}
                                                         {/* Display images after the reply content */}
-                                                        {parseImageUrls(reply.body).map((url, imgIndex) => (
+                                                        {props.parseImageUrls(reply.body).map((url, imgIndex) => (
                                                             <img key={imgIndex} src={url} alt="Message Attachment"
                                                                  style={{
                                                                      maxWidth: '100px',
@@ -994,7 +1015,7 @@ function ChatChannel(props) {
                                                     <div className="message-reactions">
                                                         {['😀', '❤️', '👍'].map(emoji => (
                                                             <button key={emoji}
-                                                                    onClick={() => handleAddReaction(reply.id, emoji)}>{emoji}</button>
+                                                                    onClick={() => props.handleAddReaction(reply.id, emoji)}>{emoji}</button>
                                                         ))}
                                                     </div>
 
@@ -1007,29 +1028,29 @@ function ChatChannel(props) {
                                             <label htmlFor="comment">What do you want to reply?</label>
                                             <textarea
                                                 name="comment"
-                                                value={replyInput[selectedMessageId] || ''}
+                                                value={replyInput[props.selectedMessageId] || ''}
                                                 onChange={(e) => setReplyInput({
                                                     ...replyInput,
-                                                    [selectedMessageId]: e.target.value
+                                                    [props.selectedMessageId]: e.target.value
                                                 })}
                                             ></textarea>
-                                            <button onClick={(e) => handlePostReply(e, selectedMessageId)}
+                                            <button onClick={(e) => handlePostReply(e, props.selectedMessageId)}
                                                     className="post_room_messages">Post
                                             </button>
                                         </div>
                                     </div>
                                 )}
 
-                                {!selectedMessageId && (<div></div>)}
+                                {!props.selectedMessageId && (<div></div>)}
                                 <div className="comment_box">
                                     <label htmlFor="comment">What do you want to say?</label>
-                                    <textarea name="comment" value={newMessage}
-                                              onChange={(e) => setNewMessage(e.target.value)}></textarea>
-                                    <button onClick={handlePostMessage} className="post_room_messages">Post</button>
+                                    <textarea name="comment" value={props.newMessage}
+                                              onChange={(e) => props.setNewMessage(e.target.value)}></textarea>
+                                    <button onClick={(e) => props.handlePostMessage(e, id)} className="post_room_messages">Post</button>
                                 </div>
                             </div>
 
-                            {!messages.length && (
+                            {!props.messages.length && (
                                 <div className="noMessages">
                                     <h2>Oops, we can't find that room!</h2>
                                     <p><a onClick={goToSplash}>Let's go home and try again.</a></p>
