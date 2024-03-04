@@ -736,29 +736,30 @@ function Profile(props) {
     const handleUpdatePassword = () => {
         if (password !== repeatPassword) {
             setError("Passwords don't match");
-            return;
-        }
-        fetch('/api/profile', {
-            method: 'POST',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({password: password})
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to update password');
-                }
-                console.log('Password updated successfully');
-                setPassword('');
-                setRepeatPassword('');
-                alert("Password has been updated!");
+        } else {
+            setError(null);
+            fetch('/api/profile', {
+                method: 'POST',
+                headers: {
+                    'Authorization': apiKey,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({password: password})
             })
-            .catch(error => {
-                console.error('Error updating password:', error);
-                setError('Failed to update password');
-            });
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to update password');
+                    }
+                    console.log('Password updated successfully');
+                    setPassword(password);
+                    setRepeatPassword(repeatPassword);
+                    alert("Password has been updated!");
+                })
+                .catch(error => {
+                    console.error('Error updating password:', error);
+                    setError('Failed to update password');
+                });
+        }
     };
 
     const goToSplash = () => {
