@@ -834,6 +834,7 @@ function ChatChannel(props) {
     const { id } = useParams();
     const history = useHistory();
     const apiKey = localStorage.getItem('shuyuj_api_key');
+    const [view, setView] = React.useState('message'); // track the current viewing page (for narrowing page use)
 
     React.useEffect(() => {
         if (!apiKey) {
@@ -864,6 +865,7 @@ function ChatChannel(props) {
     const navigateToChannel = (channelId) => {
         history.push(`/channel/${channelId}`);
         props.setSelectedMessageId(null);
+        setView('message'); // show message once channel is clicked
     };
 
     const navigateToThread = (channelId, messageId) => {
@@ -873,30 +875,20 @@ function ChatChannel(props) {
         history.push(`/channel/${channelId}/thread/${messageId}`);
     };
 
+    const handleBackToChannels = () => {
+        props.setSelectedMessageId(null);
+        setView('channel'); // only show channel list
+        history.push(`/channel/${channelId}`);
+    };
+
     if (props.rooms.length < parseInt(id, 10)) {
         return <NotFoundPage />;
     } else {
         return (
         <div className="splash container">
-            <div className="channels">
-                {props.rooms.length > 0 ? (
-                    <div className="channelList">
-                        {props.rooms.map((room) => (
-                            <button key={room.id} onClick={() => navigateToChannel(room.id)}
-                                    style={{ backgroundColor: room.id === parseInt(id, 10) ? 'orange' : 'transparent' }}>
-                                {room.name}
-                                {props.unreadCounts[room.id] !== 0 && props.user &&
-                                    <strong>({props.unreadCounts[room.id]} unread messages)</strong>}
-                            </button>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="noRooms">No channels yet! Create the first channel on Belay!</div>
-                )}
-            </div>
-
 
             <div className="channel">
+
                 <div className="header">
                     <h2><a className="go_to_splash_page" onClick={goToSplash}>Belay</a></h2>
                     <div className="channelDetail">
@@ -914,81 +906,104 @@ function ChatChannel(props) {
                                     Chatting in <input value={props.newRoomName}
                                                        onChange={(e) => props.setNewRoomName(e.target.value)}/>
                                         <button onClick={() => props.handleUpdateRoomName(id)}>Update</button>
-                                    </h3>
-                                </div>
-                            )}
-                            Invite users to this chat at:
-                            <a href={`/channel/${id}`}>/channel/{id}</a>
-                        </div>
+                                </h3>
+                            </div>
+                        )}
+                        Invite users to this chat at:
+                        <a href={`/channel/${id}`}>/channel/{id}</a>
+                    </div>
+                </div>
+
+                <div className="channel-container">
+
+                    <div className={`channel-list ${view !== 'channel' ? 'hidden' : ''}`}>
+                        {props.rooms.length > 0 ? (
+                            <div className="channelList">
+                                {props.rooms.map((room) => (
+                                    <button key={room.id} onClick={() => navigateToChannel(room.id)}
+                                            style={{ backgroundColor: room.id === parseInt(id, 10) ? 'orange' : 'transparent' }}>
+                                        {room.name}
+                                        {props.unreadCounts[room.id] !== 0 && props.user &&
+                                            <strong>({props.unreadCounts[room.id]} unread messages)</strong>}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="noRooms">No channels yet! Create the first channel on Belay!</div>
+                        )}
                     </div>
 
                     <div className="clip">
                         <div className="container">
                             <div className="chat">
 
-                                <div className="messages">
-                                    {props.messages.map((message, index) => (
-                                        <div key={index} className="message">
-                                            <div className="author">{message.name}</div>
-                                            <div className="content">
-                                                {message.body}
-                                                {/* Display images after the message content */}
-                                                {props.parseImageUrls(message.body).map((url, imgIndex) => (
-                                                    <img key={imgIndex} src={url} alt="Message Attachment"
-                                                         style={{
-                                                             maxWidth: '200px',
-                                                             maxHeight: '200px',
-                                                             marginTop: '10px'
-                                                         }}/>
-                                                ))}
-                                            </div>
+                                <div className={`message-list ${view !== 'message' ? 'hidden' : ''}`}>
+                                    <div className="back-button" onClick={handleBackToChannels}>Back to Channels</div>
 
-                                            {message.reactions && message.reactions.length > 0 && (
-                                                <div className="reactions">
-                                                    {message.reactions.map((reaction, index) => (
-                                                        <span key={index} className="reaction"
-                                                              onMouseEnter={(e) => {
-                                                                  // Show tooltip
-                                                                  e.currentTarget.querySelector('.users').classList.add('show');
-                                                              }}
-                                                              onMouseLeave={(e) => {
-                                                                  // Hide tooltip
-                                                                  e.currentTarget.querySelector('.users').classList.remove('show');
-                                                              }}>
-                                                        {reaction.emoji} {reaction.users.split(',').length}&nbsp;
-                                                            <span className="users">
-                                                            {reaction.users}
-                                                        </span>
-                                                    </span>
+                                    <div className="messages">
+                                        {props.messages.map((message, index) => (
+                                            <div key={index} className="message">
+                                                <div className="author">{message.name}</div>
+                                                <div className="content">
+                                                    {message.body}
+                                                    {/* Display images after the message content */}
+                                                    {props.parseImageUrls(message.body).map((url, imgIndex) => (
+                                                        <img key={imgIndex} src={url} alt="Message Attachment"
+                                                             style={{
+                                                                 maxWidth: '200px',
+                                                                 maxHeight: '200px',
+                                                                 marginTop: '10px'
+                                                             }}/>
                                                     ))}
                                                 </div>
-                                            )}
 
-                                            <div className="message-reactions">
-                                                {['😀', '❤️', '👍'].map(emoji => (
-                                                    <button key={emoji}
-                                                            onClick={() => props.handleAddReaction(message.id, emoji)}>{emoji}</button>
-                                                ))}
+                                                {message.reactions && message.reactions.length > 0 && (
+                                                    <div className="reactions">
+                                                        {message.reactions.map((reaction, index) => (
+                                                            <span key={index} className="reaction"
+                                                                  onMouseEnter={(e) => {
+                                                                      // Show tooltip
+                                                                      e.currentTarget.querySelector('.users').classList.add('show');
+                                                                  }}
+                                                                  onMouseLeave={(e) => {
+                                                                      // Hide tooltip
+                                                                      e.currentTarget.querySelector('.users').classList.remove('show');
+                                                                  }}>
+                                                            {reaction.emoji} {reaction.users.split(',').length}&nbsp;
+                                                                <span className="users">
+                                                                {reaction.users}
+                                                            </span>
+                                                        </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <div className="message-reactions">
+                                                    {['😀', '❤️', '👍'].map(emoji => (
+                                                        <button key={emoji}
+                                                                onClick={() => props.handleAddReaction(message.id, emoji)}>{emoji}</button>
+                                                    ))}
+                                                </div>
+
+                                                {props.repliesCount[message.id] > 0 ? (
+                                                    <button onClick={() => navigateToThread(id, message.id)}>
+                                                        Replies: {props.repliesCount[message.id]}
+                                                    </button>
+                                                ) : (
+                                                    <button onClick={() => navigateToThread(id, message.id)}>Reply!</button>
+                                                )}
+
                                             </div>
+                                        ))}
+                                    </div>
 
-                                            {props.repliesCount[message.id] > 0 ? (
-                                                <button onClick={() => navigateToThread(id, message.id)}>
-                                                    Replies: {props.repliesCount[message.id]}
-                                                </button>
-                                            ) : (
-                                                <button onClick={() => navigateToThread(id, message.id)}>Reply!</button>
-                                            )}
-
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {(<div></div>)}
-                                <div className="comment_box">
-                                    <label htmlFor="comment">What do you want to say?</label>
-                                    <textarea name="comment" value={props.newMessage}
-                                              onChange={(e) => props.setNewMessage(e.target.value)}></textarea>
-                                    <button onClick={(e) => props.handlePostMessage(e, id)} className="post_room_messages">Post</button>
+                                    {(<div></div>)}
+                                    <div className="comment_box">
+                                        <label htmlFor="comment">What do you want to say?</label>
+                                        <textarea name="comment" value={props.newMessage}
+                                                  onChange={(e) => props.setNewMessage(e.target.value)}></textarea>
+                                        <button onClick={(e) => props.handlePostMessage(e, id)} className="post_room_messages">Post</button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1002,6 +1017,7 @@ function ChatChannel(props) {
                     </div>
                 </div>
             </div>
+        </div>
         );
     }
 }
@@ -1012,6 +1028,7 @@ function Thread(props) {
     const { id, msg_id } = useParams();
     const history = useHistory();
     const apiKey = localStorage.getItem('shuyuj_api_key');
+    const [view, setView] = React.useState('reply'); // default is reply thread page
 
     React.useEffect(() => {
         if (!apiKey) {
@@ -1045,6 +1062,7 @@ function Thread(props) {
     const navigateToChannel = (channelId) => {
         history.push(`/channel/${channelId}`);
         props.setSelectedMessageId(null);
+        setView('message');
     };
 
     const navigateToThread = (channelId, messageId) => {
@@ -1052,6 +1070,13 @@ function Thread(props) {
         props.setSelectedMessageId(messageId);
         const message = props.messages.find(m => m.id === messageId);
         props.setSelectedMessage(message);
+        setView('reply');
+    };
+
+    const handleBackToChannels = () => {
+        props.setSelectedMessageId(null);
+        setView('channel');
+        history.push(`/channel/${channelId}`);
     };
 
     if (props.rooms.length < parseInt(id, 10)) {
@@ -1059,23 +1084,6 @@ function Thread(props) {
     } else {
         return (
         <div className="splash container">
-            <div className="channels">
-                {props.rooms.length > 0 ? (
-                    <div className="channelList">
-                        {props.rooms.map((room) => (
-                            <button key={room.id} onClick={() => navigateToChannel(room.id)}
-                                    style={{ backgroundColor: room.id === parseInt(id, 10) ? 'orange' : 'transparent' }}>
-                                {room.name}
-                                {props.unreadCounts[room.id] !== 0 && props.user &&
-                                    <strong>({props.unreadCounts[room.id]} unread messages)</strong>}
-                            </button>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="noRooms">No channels yet! Create the first channel on Belay!</div>
-                )}
-            </div>
-
 
             <div className="channel">
                 <div className="header">
@@ -1103,68 +1111,100 @@ function Thread(props) {
                         </div>
                     </div>
 
+                    <div className="channel-container">
+
+                    <div className={`channel-list ${view !== 'channel' ? 'hidden' : ''}`}>
+                        {props.rooms.length > 0 ? (
+                            <div className="channelList">
+                                {props.rooms.map((room) => (
+                                    <button key={room.id} onClick={() => navigateToChannel(room.id)}
+                                            style={{ backgroundColor: room.id === parseInt(id, 10) ? 'orange' : 'transparent' }}>
+                                        {room.name}
+                                        {props.unreadCounts[room.id] !== 0 && props.user &&
+                                            <strong>({props.unreadCounts[room.id]} unread messages)</strong>}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="noRooms">No channels yet! Create the first channel on Belay!</div>
+                        )}
+                    </div>
+
                     <div className="clip">
                         <div className="container">
                             <div className="chat">
+                                <div className={`narrow-message-list ${view !== 'message' ? 'hidden' : ''}`}>
+                                    <div className="back-button" onClick={handleBackToChannels}>Back to Channels</div>
 
-                                <div className="messages">
-                                    {props.messages.map((message, index) => (
-                                        <div key={index} className="message">
-                                            <div className="author">{message.name}</div>
-                                            <div className="content">
-                                                {message.body}
-                                                {/* Display images after the message content */}
-                                                {props.parseImageUrls(message.body).map((url, imgIndex) => (
-                                                    <img key={imgIndex} src={url} alt="Message Attachment"
-                                                         style={{
-                                                             maxWidth: '200px',
-                                                             maxHeight: '200px',
-                                                             marginTop: '10px'
-                                                         }}/>
-                                                ))}
-                                            </div>
-
-                                            {message.reactions && message.reactions.length > 0 && (
-                                                <div className="reactions">
-                                                    {message.reactions.map((reaction, index) => (
-                                                        <span key={index} className="reaction"
-                                                              onMouseEnter={(e) => {
-                                                                  // Show tooltip
-                                                                  e.currentTarget.querySelector('.users').classList.add('show');
-                                                              }}
-                                                              onMouseLeave={(e) => {
-                                                                  // Hide tooltip
-                                                                  e.currentTarget.querySelector('.users').classList.remove('show');
-                                                              }}>
-                                                        {reaction.emoji} {reaction.users.split(',').length}&nbsp;
-                                                            <span className="users">
-                                                            {reaction.users}
-                                                        </span>
-                                                    </span>
+                                    <div className="messages">
+                                        {props.messages.map((message, index) => (
+                                            <div key={index} className="message">
+                                                <div className="author">{message.name}</div>
+                                                <div className="content">
+                                                    {message.body}
+                                                    {/* Display images after the message content */}
+                                                    {props.parseImageUrls(message.body).map((url, imgIndex) => (
+                                                        <img key={imgIndex} src={url} alt="Message Attachment"
+                                                             style={{
+                                                                 maxWidth: '200px',
+                                                                 maxHeight: '200px',
+                                                                 marginTop: '10px'
+                                                             }}/>
                                                     ))}
                                                 </div>
-                                            )}
 
-                                            <div className="message-reactions">
-                                                {['😀', '❤️', '👍'].map(emoji => (
-                                                    <button key={emoji}
-                                                            onClick={() => props.handleAddReaction(message.id, emoji)}>{emoji}</button>
-                                                ))}
+                                                {message.reactions && message.reactions.length > 0 && (
+                                                    <div className="reactions">
+                                                        {message.reactions.map((reaction, index) => (
+                                                            <span key={index} className="reaction"
+                                                                  onMouseEnter={(e) => {
+                                                                      // Show tooltip
+                                                                      e.currentTarget.querySelector('.users').classList.add('show');
+                                                                  }}
+                                                                  onMouseLeave={(e) => {
+                                                                      // Hide tooltip
+                                                                      e.currentTarget.querySelector('.users').classList.remove('show');
+                                                                  }}>
+                                                            {reaction.emoji} {reaction.users.split(',').length}&nbsp;
+                                                                <span className="users">
+                                                                {reaction.users}
+                                                            </span>
+                                                        </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <div className="message-reactions">
+                                                    {['😀', '❤️', '👍'].map(emoji => (
+                                                        <button key={emoji}
+                                                                onClick={() => props.handleAddReaction(message.id, emoji)}>{emoji}</button>
+                                                    ))}
+                                                </div>
+
+                                                {props.repliesCount[message.id] > 0 ? (
+                                                    <button onClick={() => navigateToThread(id, message.id)}>
+                                                        Replies: {props.repliesCount[message.id]}
+                                                    </button>
+                                                ) : (
+                                                    <button onClick={() => navigateToThread(id, message.id)}>Reply!</button>
+                                                )}
+
                                             </div>
+                                        ))}
+                                    </div>
 
-                                            {props.repliesCount[message.id] > 0 ? (
-                                                <button onClick={() => navigateToThread(id, message.id)}>
-                                                    Replies: {props.repliesCount[message.id]}
-                                                </button>
-                                            ) : (
-                                                <button onClick={() => navigateToThread(id, message.id)}>Reply!</button>
-                                            )}
-
-                                        </div>
-                                    ))}
+                                    {(<div></div>)}
+                                    <div className="comment_box">
+                                        <label htmlFor="comment">What do you want to say?</label>
+                                        <textarea name="comment" value={props.newMessage}
+                                                  onChange={(e) => props.setNewMessage(e.target.value)}></textarea>
+                                        <button onClick={(e) => props.handlePostMessage(e, id)} className="post_room_messages">Post</button>
+                                    </div>
                                 </div>
 
-                                <div className="replies">
+
+                                <div className={`reply-list ${view !== 'reply' ? 'hidden' : ''}`}>
+                                    <div className="back-button" onClick={handleBackToChannels}>Back to Channels</div>
                                     <button onClick={() => navigateToChannel(id)}>close</button>
                                     <h3>Message</h3>
                                     <div className="message">
@@ -1234,6 +1274,7 @@ function Thread(props) {
                                     ) : (
                                         <p>No replies yet.</p>
                                     )}
+                                    {(<div></div>)}
                                     <div className="comment_box">
                                         <label htmlFor="comment">What do you want to reply?</label>
                                         <textarea
@@ -1250,13 +1291,6 @@ function Thread(props) {
                                     </div>
                                 </div>
 
-                                {!props.selectedMessageId && (<div></div>)}
-                                <div className="comment_box">
-                                    <label htmlFor="comment">What do you want to say?</label>
-                                    <textarea name="comment" value={props.newMessage}
-                                              onChange={(e) => props.setNewMessage(e.target.value)}></textarea>
-                                    <button onClick={(e) => props.handlePostMessage(e, id)} className="post_room_messages">Post</button>
-                                </div>
                             </div>
 
                             {!props.messages.length && (
@@ -1265,6 +1299,7 @@ function Thread(props) {
                                     <p><a onClick={goToSplash}>Let's go home and try again.</a></p>
                                 </div>
                             )}
+                        </div>
                         </div>
                     </div>
                 </div>

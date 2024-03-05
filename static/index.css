@@ -542,3 +542,73 @@ h3 {
     display: inline-block;
     margin-right: 8px;
 }
+
+
+/* TODO: ------------- Narrow page ------------ */
+.channel-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* channel list */
+.channel-list {
+  flex: 1;
+}
+
+.clip .container .chat {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+/* channel */
+.message-list {
+  flex: 3;
+  width: 900px;
+}
+
+.narrow-message-list {
+  flex: 2;
+    width: 700px;
+}
+
+.message-list, .narrow-message-list {
+  padding: 20px;
+}
+
+/* thread */
+.reply-list {
+  flex: 1;
+  padding: 20px;
+}
+
+.back-button {
+  display: none;
+}
+
+/* Responsive design */
+@media (max-width: 800px) {
+  .channel-container {
+    flex-direction: column;
+  }
+
+  .channel-list, .message-list, .narrow-message-list, .reply-list {
+    max-width: 100%;
+    flex: none;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  .back-button {
+    display: inline-block;
+    margin: 10px;
+    padding: 5px 10px;
+    background-color: #007bff;
+    color: white;
+    text-align: center;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+}
