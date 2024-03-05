@@ -878,7 +878,7 @@ function ChatChannel(props) {
     const handleBackToChannels = () => {
         props.setSelectedMessageId(null);
         setView('channel'); // only show channel list
-        history.push(`/channel/${channelId}`);
+        history.push(`/`);
     };
 
     if (props.rooms.length < parseInt(id, 10)) {
@@ -1078,7 +1078,7 @@ function Thread(props) {
     const handleBackToChannels = () => {
         props.setSelectedMessageId(null);
         setView('channel');
-        history.push(`/channel/${channelId}`);
+        history.push(`/`);
     };
 
     if (props.rooms.length < parseInt(id, 10)) {

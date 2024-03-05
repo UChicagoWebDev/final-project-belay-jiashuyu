@@ -605,4 +605,12 @@ h3 {
     border-radius: 5px;
     cursor: pointer;
   }
+
+  .splashHeader {
+    display: none;
+  }
+
+  .splash .hero {
+    display: none;
+  }
 }
