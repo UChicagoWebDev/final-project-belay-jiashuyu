@@ -5,7 +5,7 @@ body {
 }
 
 .container {
-  width: 1200px;
+  width: 1000px;
   height: 100%;
   margin: auto;
   padding: 0 30px 0 30px;
@@ -301,7 +301,7 @@ h3 {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  width: 250px; /* Set a fixed width for the room list */
+  width: 200px; /* Set a fixed width for the room list */
   max-height: 100vh; /* Set the maximum height to the viewport height */
   overflow-y: auto; /* Allows scrolling within the room list */
   margin: 0; /* Remove any default margins */
@@ -432,6 +432,7 @@ h3 {
   display: block;
   font-family: "Rowdies", cursive;
   margin-bottom: 10px;
+  padding-top: 20px;
 }
 
 .channel .chat .messages {
@@ -547,6 +548,7 @@ h3 {
 /* TODO: ------------- Narrow page ------------ */
 .channel-container {
   display: flex;
+  flex-direction: row;
   height: 100vh;
 }
 
@@ -564,21 +566,13 @@ h3 {
 /* channel */
 .message-list {
   flex: 3;
-  width: 900px;
-}
-
-.narrow-message-list {
-  flex: 2;
-    width: 700px;
-}
-
-.message-list, .narrow-message-list {
-  padding: 20px;
+  width: auto;
 }
 
 /* thread */
 .reply-list {
-  flex: 1;
+  flex: 2;
+  width: auto;
   padding: 20px;
 }
 
@@ -587,7 +581,7 @@ h3 {
 }
 
 /* Responsive design */
-@media (max-width: 800px) {
+@media (max-width: 1000px) {
   .channel-container {
     flex-direction: column;
   }
