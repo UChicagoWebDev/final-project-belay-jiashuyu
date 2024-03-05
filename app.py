@@ -309,6 +309,30 @@ def get_message(msg_id):
         return jsonify({'status': 'fail', 'error': 'message not found'}), 404
 
 
+@app.route('/api/check_valid/<int:channel_id>/<int:msg_id>', methods=['GET'])
+def check_valid(channel_id, msg_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Missing API key in request header'
+        }), 400
+
+    user = query_db('SELECT * FROM users WHERE api_key = ?', [api_key], one=True)
+    if not user:
+        return jsonify({
+            'status': 'fail',
+            'error': 'Invalid API key'
+        }), 403
+
+    print("check if thread exists in channel")  # For debugging
+    message = query_db('SELECT * FROM messages WHERE id = ? AND channel_id = ?', [msg_id, channel_id], one=True)
+    if message:
+        return jsonify({'status': 'success'}), 200
+    else:
+        return jsonify({'status': 'fail'}), 404
+
+
 @app.route('/api/channel/<int:channel_id>/last-viewed', methods=['POST'])
 def update_last_message_seen(channel_id):
     api_key = request.headers.get('Authorization')

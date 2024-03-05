@@ -1029,6 +1029,7 @@ function Thread(props) {
     const history = useHistory();
     const apiKey = localStorage.getItem('shuyuj_api_key');
     const [view, setView] = React.useState('reply'); // default is reply thread page
+    const [valid, setValid] = React.useState(true); // state to check if message exists in current channel
 
     React.useEffect(() => {
         if (!apiKey) {
@@ -1045,6 +1046,7 @@ function Thread(props) {
         props.updateLastViewed(id);
         props.fetchRepliesCount(id);
         props.fetchRepliesForMessage(props.selectedMessageId);
+        checkValidThread(id, msg_id);
         const thread_interval = setInterval(() => {
             props.fetchRooms();
             props.fetchUnreadMessageCounts();
@@ -1081,7 +1083,23 @@ function Thread(props) {
         history.push(`/`);
     };
 
-    if (props.rooms.length < parseInt(id, 10)) {
+    const checkValidThread = () => {
+        fetch(`/api/check_valid/${id}/${msg_id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                setValid(false);
+            }
+        })
+        .catch(error => console.error("Failed to check if thread is valid:", error));
+    }
+
+    if (props.rooms.length < parseInt(id, 10) || !valid) {
         return <NotFoundPage />;
     } else {
         return (
