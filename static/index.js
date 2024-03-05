@@ -202,6 +202,21 @@ function App() {
         .catch(error => console.error("Failed to fetch messages:", error));
     };
 
+    const fetch_message = (id) => {
+        fetch(`/api/message/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(message => {
+            setSelectedMessage(message);
+        })
+        .catch(error => console.error("Failed to fetch messages:", error));
+    };
+
     const handleUpdateRoomName = (id) => {
         fetch(`/api/channel/${id}`, {
             method: 'POST',
@@ -396,6 +411,7 @@ function App() {
                                 fetchRepliesCount={fetchRepliesCount}
                                 fetch_room_detail={fetch_room_detail}
                                 fetch_messages={fetch_messages}
+                                fetch_message={fetch_message}
                                 handleUpdateRoomName={handleUpdateRoomName}
                                 handlePostMessage={handlePostMessage}
                                 handleAddReaction={handleAddReaction}
@@ -1025,16 +1041,18 @@ function Thread(props) {
         props.fetchUnreadMessageCounts();
         props.fetch_room_detail(id);
         props.fetch_messages(id);
+        props.fetch_message(msg_id);
         props.updateLastViewed(id);
         props.fetchRepliesCount(id);
-        if (props.selectedMessageId) props.fetchRepliesForMessage(props.selectedMessageId);
+        props.fetchRepliesForMessage(props.selectedMessageId);
         const thread_interval = setInterval(() => {
             props.fetchRooms();
             props.fetchUnreadMessageCounts();
             props.fetch_messages(id);
+            props.fetch_message(msg_id);
             props.updateLastViewed(id);
             props.fetchRepliesCount(id);
-            if (props.selectedMessageId) props.fetchRepliesForMessage(props.selectedMessageId);
+            props.fetchRepliesForMessage(props.selectedMessageId);
         }, 200);
         return () => clearInterval(thread_interval);
     }, [id, props.selectedMessageId]); // Re-run the effect if the channel ID and selected message id changes
@@ -1192,11 +1210,11 @@ function Thread(props) {
                                         <button onClick={() => navigateToChannel(id)}>close</button>
                                         <h3>Message</h3>
                                         <div className="message">
-                                            <div className="author">{props.selectedMessage.name}</div>
+                                            <div className="author">{props.selectedMessage && props.selectedMessage.name}</div>
                                             <div className="content">
-                                                {props.selectedMessage.body}
+                                                {props.selectedMessage && props.selectedMessage.body}
                                                 {/* Display images after the message content */}
-                                                {props.parseImageUrls(props.selectedMessage.body).map((url, imgIndex) => (
+                                                {props.selectedMessage && props.parseImageUrls(props.selectedMessage.body).map((url, imgIndex) => (
                                                     <img key={imgIndex} src={url} alt="Message Attachment"
                                                          style={{
                                                              maxWidth: '100px',
