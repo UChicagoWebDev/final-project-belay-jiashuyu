@@ -280,8 +280,10 @@ function App() {
 
     // Test image url: https://uchicagowebdev.com/examples/week_1/homecoming.jpeg
     const parseImageUrls = (message) => {
-      const regex = /https?:\/\/\S+\.(jpg|jpeg|png|gif)/gi;
-      return message.match(regex) || [];
+        // Check if message is null or undefined
+        if (!message) return [];
+        const regex = /https?:\/\/\S+\.(jpg|jpeg|png|gif)/gi;
+        return message.match(regex) || [];
     };
 
     const fetchRepliesForMessage = (messageId) => {
