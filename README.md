@@ -34,7 +34,7 @@ messaging app Slack. We'll call our version
 
 ## Submissions and Grading
 
-Graders will have Python 3.11+ with Flask installed, and a local install of
+Graders will have Python 3.11+ with Flask installed, and a local installation of
 SQLite3 (which comes with Python). Because graders must use the same environment
 to evaluate submissions from multiple students, please **do not require any
 additional programs or packages to be installed**. In your submission, include a
@@ -50,10 +50,10 @@ README with instructions for how to configure and run your app:
   prints to the command line, e.g.
   `* Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)`
 - Make sure that your app starts successfully under these circumstances. We'll
-  do our best to make your app run even if it doesn't, but with a points
+  do our best to make your app run even if it doesn't, but with a points'
   penalty.
 
-You can use any techniques or tools to complete your project, whether or not we
+You can use any techniques or tools to complete your project, whether we
 studied them in class. In particular, note that there is no requirement that you
 use React (though it may make the project easier to complete). You could do the
 whole project with vanilla Javascript, you could use React, or you could use
@@ -65,9 +65,9 @@ submission any classmates you collaborated with and any materials you consulted.
 
 ### Unauthenticated UI: (3 points)
 
-- Unanthenticated users can create a new account
+- Unauthenticated users can create a new account
 - Unauthenticated users can sign in with their username and password
-- Unauthenticed users who try to access a room cannot see any messages in that
+- Unauthenticated users who try to access a room cannot see any messages in that
   room, and are sent to the signup/login page instead
 
 ### Authenticated UI: (10 points)
@@ -148,7 +148,7 @@ Narrow Screens:
   contents
 - Store Replies in the Messages table. Implement a way of distinguishing regular
   messages in a channel from replies to a message (e.g. with a `replies_to`
-  column that is null for normal messages but contains a messsage_id for
+  column that is null for normal messages but contains a message_id for
   Replies)
 - Create a table for reactions that stores, at a minimum, the emoji, the id of
   the message or comment it is a reaction to, and the id of the user who made

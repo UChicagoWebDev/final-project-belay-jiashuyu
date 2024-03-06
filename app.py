@@ -9,7 +9,6 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 def get_db():
     db = getattr(g, '_database', None)
-
     if db is None:
         db = g._database = sqlite3.connect('db/belay.sqlite3')
         db.row_factory = sqlite3.Row
@@ -60,7 +59,7 @@ def page_not_found(e):
     return app.send_static_file('404.html'), 404
 
 
-# -------------------------------- API ROUTES ----------------------------------
+# TODO: --------------------------------------------- API ROUTES ---------------------------------------------
 @app.route('/api/signup', methods=['POST'])
 def signup():
     print("signup")  # For debugging
@@ -231,7 +230,7 @@ def channel_name(channel_id):
     elif request.method == 'POST':
         print("update channel name")  # For debugging
         new_channel_name = request.get_json().get('name')
-        query_db('UPDATE channels set name = ? WHERE id = ?', [new_channel_name, channel_id])
+        query_db('UPDATE channels SET name = ? WHERE id = ?', [new_channel_name, channel_id])
         return jsonify({'status': 'success'}), 200
 
     else:
@@ -259,8 +258,9 @@ def messages(channel_id):
 
     if request.method == 'GET':
         print("get messages")  # For debugging
-        messages = query_db('SELECT * FROM messages LEFT JOIN users ON messages.user_id = users.id WHERE channel_id = ? AND replies_to IS NULL',
-                            [channel_id])
+        messages = query_db(
+            'SELECT * FROM messages LEFT JOIN users ON messages.user_id = users.id WHERE channel_id = ? AND replies_to IS NULL',
+            [channel_id])
         if messages:
             return jsonify([dict(m) for m in messages]), 200
         else:
@@ -380,19 +380,22 @@ def get_unread_messages_count():
             'error': 'Invalid API key'
         }), 403
 
-    channels = query_db('select * from channels')
+    channels = query_db('SELECT * FROM channels')
     unread_messages_counts = []
 
     for channel in channels:
-        last_viewed_message_id = query_db('select last_message_seen from user_message_views where user_id = ? and channel_id = ?',
-                                          [user['id'], channel['id']], one=True)
+        last_viewed_message_id = query_db(
+            'SELECT last_message_seen FROM user_message_views WHERE user_id = ? AND channel_id = ?',
+            [user['id'], channel['id']], one=True)
 
         if last_viewed_message_id:
-            unread_count = query_db('select count(*) as count from messages where channel_id = ? and id > ? and replies_to is null',
-                                    [channel['id'], last_viewed_message_id['last_message_seen']], one=True)
+            unread_count = query_db(
+                'SELECT count(*) AS count FROM messages WHERE channel_id = ? AND id > ? AND replies_to IS NULL',
+                [channel['id'], last_viewed_message_id['last_message_seen']], one=True)
         else:
-            unread_count = query_db('select count(*) as count from messages where channel_id = ? and replies_to is null',
-                                    [channel['id']], one=True)
+            unread_count = query_db(
+                'SELECT count(*) AS count FROM messages WHERE channel_id = ? AND replies_to IS NULL',
+                [channel['id']], one=True)
 
         unread_messages_counts.append({'channel_id': channel['id'], 'unread_count': unread_count['count']})
 
@@ -434,7 +437,7 @@ def reaction(message_id):
     elif request.method == 'GET':
         print("get emoji")  # For debugging
         reactions = query_db(
-            'SELECT emoji, GROUP_CONCAT(users.name) as users FROM reactions JOIN users ON reactions.user_id = users.id WHERE message_id = ? GROUP BY emoji',
+            'SELECT emoji, GROUP_CONCAT(users.name) AS users FROM reactions JOIN users ON reactions.user_id = users.id WHERE message_id = ? GROUP BY emoji',
             [message_id])
         if reactions:
             return jsonify([dict(row) for row in reactions]), 200
@@ -465,7 +468,7 @@ def reply(message_id):
         }), 403
 
     if request.method == 'GET':
-        replies = query_db('SELECT * FROM messages LEFT JOIN users on messages.user_id = users.id WHERE replies_to = ?',
+        replies = query_db('SELECT * FROM messages LEFT JOIN users ON messages.user_id = users.id WHERE replies_to = ?',
                            [message_id])
         if replies:
             return jsonify([dict(r) for r in replies]), 200
@@ -503,7 +506,7 @@ def get_message_replies_count(channel_id):
     if messages:
         reply_counts = []
         for message in messages:
-            count = query_db('select count(*) as count from messages where replies_to = ?', [message['id']], one=True)
+            count = query_db('SELECT count(*) AS count FROM messages WHERE replies_to = ?', [message['id']], one=True)
 
             reply_counts.append({
                 'message_id': message['id'],

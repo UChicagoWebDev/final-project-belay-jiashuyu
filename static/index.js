@@ -7,14 +7,16 @@ const {
 } = ReactRouterDOM;
 
 
-// TODO: ------------------------ App Component -------------------------------
+// TODO: --------------------------------------------- App Component ---------------------------------------------
 function App() {
+    const apiKey = localStorage.getItem('shuyuj_belay_auth_key');
+
     const [user, setUser] = React.useState(null); // State to hold current user info
-    const [rooms, setRooms] = React.useState([]); // State to hold current room list
-    const [unreadCounts, setUnreadCounts] = React.useState({}); // State to hold unread counts for each room
-    const [room, setRoom] = React.useState({name: ''}); // State to hold room details
+    const [channels, setChannels] = React.useState([]); // State to hold current channel list
+    const [unreadCounts, setUnreadCounts] = React.useState({}); // State to hold unread counts for each channel
+    const [channel, setChannel] = React.useState({name: ''}); // State to hold channel details
     const [isEditing, setIsEditing] = React.useState(false); // State to toggle edit mode
-    const [newRoomName, setNewRoomName] = React.useState(''); // State for the new room name input
+    const [newChannelName, setNewChannelName] = React.useState(''); // State for the new channel name input
     const [messages, setMessages] = React.useState([]); // State to hold messages
     const [newMessage, setNewMessage] = React.useState(''); // State for the new message input
     const [repliesCount, setRepliesCount] = React.useState({}); // State for the reply counts
@@ -22,7 +24,6 @@ function App() {
     const [selectedMessage, setSelectedMessage] = React.useState(null); // State for the selected message
     const [replies, setReplies] = React.useState([]); // State to hold replies
     const [replyInput, setReplyInput] = React.useState({}); // State for the new reply input
-    const apiKey = localStorage.getItem('shuyuj_api_key');
 
     const handleLogin = (username, password) => {
         return fetch('/api/login', {
@@ -44,7 +45,7 @@ function App() {
                     username: data.username,
                     apiKey: data.api_key
                 });
-                localStorage.setItem('shuyuj_api_key', data.api_key);
+                localStorage.setItem('shuyuj_belay_auth_key', data.api_key);
                 return true;
             })
             .catch(error => {
@@ -53,7 +54,7 @@ function App() {
             });
     };
 
-    function fetchRooms() {
+    function fetchChannelList() {
         fetch('/api/channel', {
             method: 'GET',
             headers: {
@@ -68,7 +69,7 @@ function App() {
                 return response.json();
             })
             .then(data => {
-                setRooms(data);
+                setChannels(data);
             })
             .catch(error => {
                 console.error('There has been a problem with your fetch operation:', error);
@@ -104,29 +105,29 @@ function App() {
                 'Content-Type': 'application/json',
             },
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.length > 0) {
-                const lastMessageId = data[data.length - 1].id;
-                // Update last viewed message
-                fetch(`/api/channel/${id}/last-viewed`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': apiKey,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ last_message_id_seen: lastMessageId }),
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to update last viewed message');
-                    }
-                    return response.json();
-                })
-                .catch(error => console.error('Failed to update last viewed message:', error));
-            }
-        })
-        .catch(error => console.error("Failed to fetch messages:", error));
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    const lastMessageId = data[data.length - 1].id;
+                    // Update last viewed message
+                    fetch(`/api/channel/${id}/last-viewed`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': apiKey,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({last_message_id_seen: lastMessageId}),
+                    })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Failed to update last viewed message');
+                            }
+                            return response.json();
+                        })
+                        .catch(error => console.error('Failed to update last viewed message:', error));
+                }
+            })
+            .catch(error => console.error("Failed to fetch messages:", error));
     };
 
     const handleEditClick = () => {
@@ -152,7 +153,7 @@ function App() {
             .catch(error => console.error("Failed to fetch replies count:", error));
     };
 
-    const fetch_room_detail =(id) => {
+    const fetchChannelDetail = (id) => {
         fetch(`/api/channel/${id}`, {
             method: 'GET',
             headers: {
@@ -162,13 +163,13 @@ function App() {
         })
             .then(response => response.json())
             .then(data => {
-                setRoom({name: data.name});
-                setNewRoomName(data.name);
+                setChannel({name: data.name});
+                setNewChannelName(data.name);
             })
-            .catch(error => console.error("Failed to fetch room details:", error));
+            .catch(error => console.error("Failed to fetch channel details:", error));
     }
 
-    const fetch_messages = (id) => {
+    const fetchMessagesWithReactions = (id) => {
         fetch(`/api/channel/${id}/messages`, {
             method: 'GET',
             headers: {
@@ -176,33 +177,33 @@ function App() {
                 'Content-Type': 'application/json'
             }
         })
-        .then(response => response.json())
-        .then(messagesData => {
-            // Fetch reactions for each message
-            const fetchReactionsPromises = messagesData.map(message =>
-                fetch(`/api/message/${message.id}/reaction`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': apiKey,
-                        'Content-Type': 'application/json'
-                    }
-                }).then(response => response.json())
-            );
+            .then(response => response.json())
+            .then(messagesData => {
+                // Fetch reactions for each message
+                const fetchReactionsPromises = messagesData.map(message =>
+                    fetch(`/api/message/${message.id}/reaction`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': apiKey,
+                            'Content-Type': 'application/json'
+                        }
+                    }).then(response => response.json())
+                );
 
-            // Wait for all reactions to be fetched
-            Promise.all(fetchReactionsPromises).then(reactionsData => {
-                const messagesWithReactions = messagesData.map((message, index) => ({
-                    ...message,
-                    reactions: reactionsData[index]
-                }));
+                // Wait for all reactions to be fetched
+                Promise.all(fetchReactionsPromises).then(reactionsData => {
+                    const messagesWithReactions = messagesData.map((message, index) => ({
+                        ...message,
+                        reactions: reactionsData[index]
+                    }));
 
-                setMessages(messagesWithReactions);
-            });
-        })
-        .catch(error => console.error("Failed to fetch messages:", error));
+                    setMessages(messagesWithReactions);
+                });
+            })
+            .catch(error => console.error("Failed to fetch messages:", error));
     };
 
-    const fetch_message = (id) => {
+    const fetchParentMessage = (id) => {
         fetch(`/api/message/${id}`, {
             method: 'GET',
             headers: {
@@ -210,27 +211,27 @@ function App() {
                 'Content-Type': 'application/json'
             }
         })
-        .then(response => response.json())
-        .then(message => {
-            setSelectedMessage(message);
-        })
-        .catch(error => console.error("Failed to fetch messages:", error));
+            .then(response => response.json())
+            .then(message => {
+                setSelectedMessage(message);
+            })
+            .catch(error => console.error("Failed to fetch messages:", error));
     };
 
-    const handleUpdateRoomName = (id) => {
+    const handleUpdateChannelName = (id) => {
         fetch(`/api/channel/${id}`, {
             method: 'POST',
             headers: {
                 'Authorization': apiKey,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({name: newRoomName}),
+            body: JSON.stringify({name: newChannelName}),
         })
             .then(() => {
-                setRoom({name: newRoomName});
+                setChannel({name: newChannelName});
                 setIsEditing(false);
             })
-            .catch(error => console.error("Failed to update room name:", error));
+            .catch(error => console.error("Failed to update channel name:", error));
     };
 
     const handlePostMessage = (event, id) => {
@@ -264,18 +265,18 @@ function App() {
             },
             body: JSON.stringify({emoji}),
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to add reaction');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.message === "Reaction already exists") {
-                alert("You have already added this emoji :)");
-            }
-        })
-        .catch(error => console.error('Error adding reaction:', error));
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to add reaction');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.message === "Reaction already exists") {
+                    alert("You have already added this emoji :)");
+                }
+            })
+            .catch(error => console.error('Error adding reaction:', error));
     };
 
     // Test image url: https://uchicagowebdev.com/examples/week_1/homecoming.jpeg
@@ -356,10 +357,10 @@ function App() {
                 <Switch>
                     <Route exact path="/">
                         <SplashScreen user={user} setUser={setUser}
-                                      rooms={rooms} setRooms={setRooms}
+                                      channels={channels} setChannels={setChannels}
                                       unreadCounts={unreadCounts} setUnreadCounts={setUnreadCounts}
                                       selectedMessageId={selectedMessageId} setSelectedMessageId={setSelectedMessageId}
-                                      fetchRooms={fetchRooms}
+                                      fetchChannelList={fetchChannelList}
                                       fetchUnreadMessageCounts={fetchUnreadMessageCounts}/>
                     </Route>
                     <Route path="/login">
@@ -370,35 +371,35 @@ function App() {
                     </Route>
                     <Route exact path="/channel/:id">
                         <ChatChannel user={user} setUser={setUser}
-                                     rooms={rooms} setRooms={setRooms}
+                                     channels={channels} setChannels={setChannels}
                                      unreadCounts={unreadCounts} setUnreadCounts={setUnreadCounts}
-                                     room={room} setRoom={setRoom}
+                                     channel={channel} setChannel={setChannel}
                                      isEditing={isEditing} setIsEditing={setIsEditing}
-                                     newRoomName={newRoomName} setNewRoomName={setNewRoomName}
+                                     newChannelName={newChannelName} setNewChannelName={setNewChannelName}
                                      messages={messages} setMessages={setMessages}
                                      newMessage={newMessage} setNewMessage={setNewMessage}
                                      repliesCount={repliesCount} setRepliesCount={setRepliesCount}
                                      selectedMessageId={selectedMessageId} setSelectedMessageId={setSelectedMessageId}
                                      selectedMessage={selectedMessage} setSelectedMessage={setSelectedMessage}
-                                     fetchRooms={fetchRooms}
+                                     fetchChannelList={fetchChannelList}
                                      fetchUnreadMessageCounts={fetchUnreadMessageCounts}
                                      updateLastViewed={updateLastViewed}
                                      handleEditClick={handleEditClick}
                                      fetchRepliesCount={fetchRepliesCount}
-                                     fetch_room_detail={fetch_room_detail}
-                                     fetch_messages={fetch_messages}
-                                     handleUpdateRoomName={handleUpdateRoomName}
+                                     fetchChannelDetail={fetchChannelDetail}
+                                     fetchMessagesWithReactions={fetchMessagesWithReactions}
+                                     handleUpdateChannelName={handleUpdateChannelName}
                                      handlePostMessage={handlePostMessage}
                                      handleAddReaction={handleAddReaction}
                                      parseImageUrls={parseImageUrls}/>
                     </Route>
                     <Route exact path="/channel/:id/thread/:msg_id">
                         <Thread user={user} setUser={setUser}
-                                rooms={rooms} setRooms={setRooms}
+                                channels={channels} setChannels={setChannels}
                                 unreadCounts={unreadCounts} setUnreadCounts={setUnreadCounts}
-                                room={room} setRoom={setRoom}
+                                channel={channel} setChannel={setChannel}
                                 isEditing={isEditing} setIsEditing={setIsEditing}
-                                newRoomName={newRoomName} setNewRoomName={setNewRoomName}
+                                newChannelName={newChannelName} setNewChannelName={setNewChannelName}
                                 messages={messages} setMessages={setMessages}
                                 newMessage={newMessage} setNewMessage={setNewMessage}
                                 repliesCount={repliesCount} setRepliesCount={setRepliesCount}
@@ -406,15 +407,15 @@ function App() {
                                 selectedMessage={selectedMessage} setSelectedMessage={setSelectedMessage}
                                 replies={replies} setReplies={setReplies}
                                 replyInput={replyInput} setReplyInput={setReplyInput}
-                                fetchRooms={fetchRooms}
+                                fetchChannelList={fetchChannelList}
                                 fetchUnreadMessageCounts={fetchUnreadMessageCounts}
                                 updateLastViewed={updateLastViewed}
                                 handleEditClick={handleEditClick}
                                 fetchRepliesCount={fetchRepliesCount}
-                                fetch_room_detail={fetch_room_detail}
-                                fetch_messages={fetch_messages}
-                                fetch_message={fetch_message}
-                                handleUpdateRoomName={handleUpdateRoomName}
+                                fetchChannelDetail={fetchChannelDetail}
+                                fetchMessagesWithReactions={fetchMessagesWithReactions}
+                                fetchParentMessage={fetchParentMessage}
+                                handleUpdateChannelName={handleUpdateChannelName}
                                 handlePostMessage={handlePostMessage}
                                 handleAddReaction={handleAddReaction}
                                 parseImageUrls={parseImageUrls}
@@ -422,7 +423,7 @@ function App() {
                                 handlePostReply={handlePostReply}/>
                     </Route>
                     <Route path="*">
-                        <NotFoundPage />
+                        <NotFoundPage/>
                     </Route>
                 </Switch>
             </div>
@@ -431,9 +432,9 @@ function App() {
 }
 
 
-// TODO: ------------------------ Splash Component -------------------------------
+// TODO: --------------------------------------------- Splash Component ---------------------------------------------
 function SplashScreen(props) {
-    const apiKey = localStorage.getItem('shuyuj_api_key');
+    const apiKey = localStorage.getItem('shuyuj_belay_auth_key');
     const history = useHistory();
 
     const handleSignup = () => {
@@ -448,7 +449,7 @@ function SplashScreen(props) {
                 return response.json();
             })
             .then(data => {
-                localStorage.setItem('shuyuj_api_key', data.api_key);
+                localStorage.setItem('shuyuj_belay_auth_key', data.api_key);
                 props.setUser({id: data.id, username: data.username, apiKey: data.api_key});
                 history.push('/profile');
             })
@@ -457,7 +458,7 @@ function SplashScreen(props) {
             });
     };
 
-    const handleCreateRoom = () => {
+    const handleCreateChannel = () => {
         fetch('/api/channel', {
             method: 'POST',
             headers: {
@@ -467,18 +468,18 @@ function SplashScreen(props) {
         })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Failed to create a new room');
+                    throw new Error('Failed to create a new channel');
                 }
                 return response.json();
             })
-            .then(newRoom => {
-                history.push(`/channel/${newRoom.id}`);
-                // Add the new room to the existing list of rooms
-                props.setRooms(prevRooms => [...prevRooms, newRoom]);
+            .then(newChannel => {
+                history.push(`/channel/${newChannel.id}`);
+                // Add the new channel to the existing list of channels
+                props.setChannels(prevChannels => [...prevChannels, newChannel]);
                 props.setSelectedMessageId(null);
             })
             .catch(error => {
-                console.error('Error creating a new room:', error);
+                console.error('Error creating a new channel:', error);
             });
     };
 
@@ -511,11 +512,11 @@ function SplashScreen(props) {
 
     React.useEffect(() => {
         document.title = "Belay Main Page";
-        props.fetchRooms();
+        props.fetchChannelList();
         fetchUserInfo();
         props.fetchUnreadMessageCounts();
         const counts_interval = setInterval(() => {
-            props.fetchRooms();
+            props.fetchChannelList();
             props.fetchUnreadMessageCounts();
         }, 200);
         return () => clearInterval(counts_interval);
@@ -529,7 +530,7 @@ function SplashScreen(props) {
         history.push('/profile');
     }
 
-    function navigateToChannel(channelId) {
+    function redirectToChannel(channelId) {
         history.push(`/channel/${channelId}`);
     }
 
@@ -550,18 +551,18 @@ function SplashScreen(props) {
             </div>
 
             <div className="channels">
-                {props.rooms.length > 0 ? (
+                {props.channels.length > 0 ? (
                     <div className="channelList">
-                        {props.rooms.map((room) => (
-                            <button key={room.id} onClick={() => navigateToChannel(room.id)}>
-                                {room.name}
-                                {props.unreadCounts[room.id] !== 0 && props.user &&
-                                    <strong>({props.unreadCounts[room.id]} unread messages)</strong>}
+                        {props.channels.map((channel) => (
+                            <button key={channel.id} onClick={() => redirectToChannel(channel.id)}>
+                                {channel.name}
+                                {props.unreadCounts[channel.id] !== 0 && props.user &&
+                                    <strong>({props.unreadCounts[channel.id]} unread messages)</strong>}
                             </button>
                         ))}
                     </div>
                 ) : (
-                    <div className="noRooms">No channels yet! Create the first channel on Belay!</div>
+                    <div className="noChannels">No channels yet! Create the first channel on Belay!</div>
                 )}
             </div>
 
@@ -572,7 +573,7 @@ function SplashScreen(props) {
                 </div>
                 <h1>Belay</h1>
                 {props.user ? (
-                    <button className="create" onClick={handleCreateRoom}>Create a Room</button>
+                    <button className="create" onClick={handleCreateChannel}>Create a Channel</button>
                 ) : (
                     <button className="signup" onClick={handleSignup}>Signup</button>
                 )}
@@ -583,12 +584,13 @@ function SplashScreen(props) {
 }
 
 
-// TODO: ------------------------ Login Component -------------------------------
+// TODO: --------------------------------------------- Login Component ---------------------------------------------
 function LoginForm(props) {
+    const history = useHistory();
+
     const [username, setUsername] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [errorMessage, setErrorMessage] = React.useState('');
-    const history = useHistory();
 
     const handleSignup = () => {
         fetch('/api/signup', {
@@ -602,7 +604,7 @@ function LoginForm(props) {
                 return response.json();
             })
             .then(data => {
-                localStorage.setItem('shuyuj_api_key', data.api_key);
+                localStorage.setItem('shuyuj_belay_auth_key', data.api_key);
                 props.setUser({id: data.id, username: data.username, apiKey: data.api_key});
                 history.push('/profile');
             })
@@ -636,12 +638,8 @@ function LoginForm(props) {
             });
     };
 
-    const goToSplash = () => {
-        history.push('/');
-    }
-
     React.useEffect(() => {
-        const apiKey = localStorage.getItem('shuyuj_api_key');
+        const apiKey = localStorage.getItem('shuyuj_belay_auth_key');
         if (apiKey) {
             history.push('/profile');
         }
@@ -651,7 +649,7 @@ function LoginForm(props) {
     return (
         <div className="login">
             <div className="header">
-                <h2><a onClick={goToSplash}>Belay</a></h2>
+                <h2><a href="/">Belay</a></h2>
                 <h4>Login Page</h4>
             </div>
             <div className="clip">
@@ -695,10 +693,11 @@ function LoginForm(props) {
 }
 
 
-// TODO: ------------------------ Profile Component -------------------------------
+// TODO: --------------------------------------------- Profile Component ---------------------------------------------
 function Profile(props) {
+    const apiKey = localStorage.getItem('shuyuj_belay_auth_key');
     const history = useHistory();
-    const apiKey = localStorage.getItem('shuyuj_api_key');
+
     const [username, setUsername] = React.useState(props.user ? props.user.username : '');
     const [password, setPassword] = React.useState('');
     const [repeatPassword, setRepeatPassword] = React.useState('');
@@ -706,7 +705,7 @@ function Profile(props) {
 
     const handleLogout = () => {
         props.setUser(null);
-        localStorage.removeItem('shuyuj_api_key');
+        localStorage.removeItem('shuyuj_belay_auth_key');
         history.push("/login");
     };
 
@@ -800,7 +799,7 @@ function Profile(props) {
     return (
         <div className="profile">
             <div className="header">
-                <h2><a className="go_to_splash_page" onClick={goToSplash}>Belay</a></h2>
+                <h2><a href="/">Belay</a></h2>
                 <h4>Profile Page</h4>
             </div>
             <div className="clip">
@@ -831,12 +830,13 @@ function Profile(props) {
 }
 
 
-// TODO: ------------------------ Channel Component -------------------------------
+// TODO: --------------------------------------------- Channel Component ---------------------------------------------
 function ChatChannel(props) {
-    const { id } = useParams();
+    const apiKey = localStorage.getItem('shuyuj_belay_auth_key');
+    const {id} = useParams();
     const history = useHistory();
-    const apiKey = localStorage.getItem('shuyuj_api_key');
-    const [view, setView] = React.useState('message'); // track the current viewing page (for narrowing page use)
+
+    const [view, setView] = React.useState('message'); // set default view as channel messages
 
     React.useEffect(() => {
         if (!apiKey) {
@@ -844,16 +844,16 @@ function ChatChannel(props) {
             alert("Please login before entering to the channels.")
         }
         document.title = `Belay Channel #${id}`;
-        props.fetchRooms();
+        props.fetchChannelList();
         props.fetchUnreadMessageCounts();
-        props.fetch_room_detail(id);
-        props.fetch_messages(id);
+        props.fetchChannelDetail(id);
+        props.fetchMessagesWithReactions(id);
         props.updateLastViewed(id);
         props.fetchRepliesCount(id);
         const message_interval = setInterval(() => {
-            props.fetchRooms();
+            props.fetchChannelList();
             props.fetchUnreadMessageCounts();
-            props.fetch_messages(id);
+            props.fetchMessagesWithReactions(id);
             props.updateLastViewed(id);
             props.fetchRepliesCount(id);
         }, 200);
@@ -864,13 +864,13 @@ function ChatChannel(props) {
         history.push('/');
     };
 
-    const navigateToChannel = (channelId) => {
+    const redirectToChannel = (channelId) => {
         history.push(`/channel/${channelId}`);
         props.setSelectedMessageId(null);
         setView('message'); // show message once channel is clicked
     };
 
-    const navigateToThread = (channelId, messageId) => {
+    const redirectToThread = (channelId, messageId) => {
         props.setSelectedMessageId(messageId);
         const message = props.messages.find(m => m.id === messageId);
         props.setSelectedMessage(message);
@@ -883,154 +883,150 @@ function ChatChannel(props) {
         history.push(`/`);
     };
 
-    if (props.rooms.length < parseInt(id, 10)) {
-        return <NotFoundPage />;
+    if (props.channels.length < parseInt(id, 10)) {
+        return <NotFoundPage/>;
     } else {
         return (
-        <div className="splash container">
-
-            <div className="channel">
-
-                <div className="header">
-                    <h2><a className="go_to_splash_page" onClick={goToSplash}>Belay</a></h2>
-                    <div className="channelDetail">
-                        {!props.isEditing && props.room ? (
-                            <div className="displayRoomName">
-                                <h3 className="curr_room_name">
-                                    Chatting in <strong>{props.room.name}</strong>
-                                    <a onClick={props.handleEditClick}><span
-                                        className="material-symbols-outlined md-18">edit</span></a>
-                                </h3>
-                            </div>
-                        ) : (
-                            <div className="editRoomName">
-                                <h3>
-                                    Chatting in <input value={props.newRoomName}
-                                                       onChange={(e) => props.setNewRoomName(e.target.value)}/>
-                                        <button onClick={() => props.handleUpdateRoomName(id)}>Update</button>
-                                </h3>
-                            </div>
-                        )}
-                        Invite users to this chat at:
-                        <a href={`/channel/${id}`}>/channel/{id}</a>
-                    </div>
-                </div>
-
-                <div className="channel-container">
-
-                    <div className={`channel-list ${view !== 'channel' ? 'hidden' : ''}`}>
-                        {props.rooms.length > 0 ? (
-                            <div className="channelList">
-                                {props.rooms.map((room) => (
-                                    <button key={room.id} onClick={() => navigateToChannel(room.id)}
-                                            style={{ backgroundColor: room.id === parseInt(id, 10) ? 'orange' : 'transparent' }}>
-                                        {room.name}
-                                        {props.unreadCounts[room.id] !== 0 && props.user &&
-                                            <strong>({props.unreadCounts[room.id]} unread messages)</strong>}
-                                    </button>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="noRooms">No channels yet! Create the first channel on Belay!</div>
-                        )}
-                    </div>
-
-                    <div className="clip">
-                        <div className="container">
-                            <div className="chat">
-
-                                <div className={`message-list ${view !== 'message' ? 'hidden' : ''}`}>
-                                    <div className="back-button" onClick={handleBackToChannels}>Back to Channels</div>
-
-                                    <div className="messages">
-                                        {props.messages.map((message, index) => (
-                                            <div key={index} className="message">
-                                                <div className="author">{message.name}</div>
-                                                <div className="content">
-                                                    {message.body}
-                                                    {/* Display images after the message content */}
-                                                    {props.parseImageUrls(message.body).map((url, imgIndex) => (
-                                                        <img key={imgIndex} src={url} alt="Message Attachment"
-                                                             style={{
-                                                                 maxWidth: '200px',
-                                                                 maxHeight: '200px',
-                                                                 marginTop: '10px'
-                                                             }}/>
-                                                    ))}
-                                                </div>
-
-                                                {message.reactions && message.reactions.length > 0 && (
-                                                    <div className="reactions">
-                                                        {message.reactions.map((reaction, index) => (
-                                                            <span key={index} className="reaction"
-                                                                  onMouseEnter={(e) => {
-                                                                      // Show tooltip
-                                                                      e.currentTarget.querySelector('.users').classList.add('show');
-                                                                  }}
-                                                                  onMouseLeave={(e) => {
-                                                                      // Hide tooltip
-                                                                      e.currentTarget.querySelector('.users').classList.remove('show');
-                                                                  }}>
-                                                            {reaction.emoji} {reaction.users.split(',').length}&nbsp;
-                                                                <span className="users">
-                                                                {reaction.users}
-                                                            </span>
-                                                        </span>
-                                                        ))}
-                                                    </div>
-                                                )}
-
-                                                <div className="message-reactions">
-                                                    {['😀', '❤️', '👍'].map(emoji => (
-                                                        <button key={emoji}
-                                                                onClick={() => props.handleAddReaction(message.id, emoji)}>{emoji}</button>
-                                                    ))}
-                                                </div>
-
-                                                {props.repliesCount[message.id] > 0 ? (
-                                                    <button onClick={() => navigateToThread(id, message.id)}>
-                                                        Replies: {props.repliesCount[message.id]}
-                                                    </button>
-                                                ) : (
-                                                    <button onClick={() => navigateToThread(id, message.id)}>Reply!</button>
-                                                )}
-
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {(<div></div>)}
-                                    <div className="comment_box">
-                                        <label htmlFor="comment">What do you want to say?</label>
-                                        <textarea name="comment" value={props.newMessage}
-                                                  onChange={(e) => props.setNewMessage(e.target.value)}></textarea>
-                                        <button onClick={(e) => props.handlePostMessage(e, id)} className="post_room_messages">Post</button>
-                                    </div>
+            <div className="splash container">
+                <div className="channel">
+                    <div className="header">
+                        <h2><a href="/">Belay</a></h2>
+                        <div className="channelDetail">
+                            {!props.isEditing && props.channel ? (
+                                <div>
+                                    <h3>
+                                        Chatting in <strong>{props.channel.name}</strong>
+                                        <a onClick={props.handleEditClick}><span
+                                            className="material-symbols-outlined md-18">edit</span></a>
+                                    </h3>
                                 </div>
-                            </div>
-
-                            {!props.messages.length && (
-                                <div className="noMessages">
-                                    <h2>Oops, we can't find that room!</h2>
-                                    <p><a onClick={goToSplash}>Let's go home and try again.</a></p>
+                            ) : (
+                                <div>
+                                    <h3>
+                                        Chatting in <input value={props.newChannelName}
+                                                           onChange={(e) => props.setNewChannelName(e.target.value)}/>
+                                        <button onClick={() => props.handleUpdateChannelName(id)}>Update</button>
+                                    </h3>
                                 </div>
                             )}
+                            Invite users to this chat at:
+                            <a href={`/channel/${id}`}>/channel/{id}</a>
+                        </div>
+                    </div>
+
+                    <div className="channel-container">
+
+                        <div className={`channel-list ${view !== 'channel' ? 'hidden' : ''}`}>
+                            {props.channels.length > 0 ? (
+                                <div className="channelList">
+                                    {props.channels.map((channel) => (
+                                        <button key={channel.id} onClick={() => redirectToChannel(channel.id)}
+                                                style={{backgroundColor: channel.id === parseInt(id, 10) ? 'orange' : 'transparent'}}>
+                                            {channel.name}
+                                            {props.unreadCounts[channel.id] !== 0 && props.user &&
+                                                <strong>({props.unreadCounts[channel.id]} unread messages)</strong>}
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="noChannels">No channels yet! Create the first channel on Belay!</div>
+                            )}
+                        </div>
+
+                        <div className="clip">
+                            <div className="container">
+                                <div className="chat">
+
+                                    <div className={`message-list ${view !== 'message' ? 'hidden' : ''}`}>
+                                        <div className="back-button" onClick={handleBackToChannels}>Back to Channels</div>
+                                        <div className="messages">
+                                            {props.messages.map((message, index) => (
+                                                <div key={index} className="message">
+                                                    <div className="author">{message.name}</div>
+                                                    <div className="content">
+                                                        {message.body}
+                                                        {/* Display images after the message content */}
+                                                        {props.parseImageUrls(message.body).map((url, imgIndex) => (
+                                                            <img key={imgIndex} src={url} alt="Message Attachment"
+                                                                 style={{
+                                                                     maxWidth: '200px',
+                                                                     maxHeight: '200px',
+                                                                     marginTop: '10px'
+                                                                 }}/>
+                                                        ))}
+                                                    </div>
+
+                                                    {message.reactions && message.reactions.length > 0 && (
+                                                        <div className="reactions">
+                                                            {message.reactions.map((reaction, index) => (
+                                                                <span key={index} className="reaction"
+                                                                      onMouseEnter={(e) => {
+                                                                          // Show tooltip
+                                                                          e.currentTarget.querySelector('.users').classList.add('show');
+                                                                      }}
+                                                                      onMouseLeave={(e) => {
+                                                                          // Hide tooltip
+                                                                          e.currentTarget.querySelector('.users').classList.remove('show');
+                                                                      }}>
+                                                                    {reaction.emoji} {reaction.users.split(',').length}&nbsp;
+                                                                    <span className="users">{reaction.users}</span>
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    <div className="message-reactions">
+                                                        {['😀', '❤️', '👍'].map(emoji => (
+                                                            <button key={emoji}
+                                                                    onClick={() => props.handleAddReaction(message.id, emoji)}>{emoji}</button>
+                                                        ))}
+                                                    </div>
+
+                                                    {props.repliesCount[message.id] > 0 ? (
+                                                        <button onClick={() => redirectToThread(id, message.id)}>
+                                                            Replies: {props.repliesCount[message.id]}
+                                                        </button>
+                                                    ) : (
+                                                        <button onClick={() => redirectToThread(id, message.id)}>Reply!</button>
+                                                    )}
+
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {(<div></div>)}
+                                        <div className="comment_box">
+                                            <label htmlFor="comment">What do you want to say?</label>
+                                            <textarea name="comment" value={props.newMessage}
+                                                      onChange={(e) => props.setNewMessage(e.target.value)}></textarea>
+                                            <button onClick={(e) => props.handlePostMessage(e, id)}>Post</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {!props.messages.length && (
+                                    <div>
+                                        <h2>Oops, we can't find that channel!</h2>
+                                        <p><a href="/">Let's go home and try again.</a></p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
         );
     }
 }
 
 
-// TODO: ------------------------ Thread Component -------------------------------
+// TODO: --------------------------------------------- Thread Component ---------------------------------------------
 function Thread(props) {
-    const { id, msg_id } = useParams();
+    const apiKey = localStorage.getItem('shuyuj_belay_auth_key');
+    const {id, msg_id} = useParams();
     const history = useHistory();
-    const apiKey = localStorage.getItem('shuyuj_api_key');
-    const [view, setView] = React.useState('reply'); // default is reply thread page
+
+    const [view, setView] = React.useState('reply'); // set default view as reply thread page
     const [valid, setValid] = React.useState(true); // state to check if message exists in current channel
 
     React.useEffect(() => {
@@ -1040,20 +1036,20 @@ function Thread(props) {
         }
         document.title = `Belay Channel #${id} Thread #${msg_id}`;
         props.setSelectedMessageId(msg_id);
-        props.fetchRooms();
+        props.fetchChannelList();
         props.fetchUnreadMessageCounts();
-        props.fetch_room_detail(id);
-        props.fetch_messages(id);
-        props.fetch_message(msg_id);
+        props.fetchChannelDetail(id);
+        props.fetchMessagesWithReactions(id);
+        props.fetchParentMessage(msg_id);
         props.updateLastViewed(id);
         props.fetchRepliesCount(id);
         props.fetchRepliesForMessage(props.selectedMessageId);
         checkValidThread(id, msg_id);
         const thread_interval = setInterval(() => {
-            props.fetchRooms();
+            props.fetchChannelList();
             props.fetchUnreadMessageCounts();
-            props.fetch_messages(id);
-            props.fetch_message(msg_id);
+            props.fetchMessagesWithReactions(id);
+            props.fetchParentMessage(msg_id);
             props.updateLastViewed(id);
             props.fetchRepliesCount(id);
             props.fetchRepliesForMessage(props.selectedMessageId);
@@ -1065,13 +1061,13 @@ function Thread(props) {
         history.push('/');
     };
 
-    const navigateToChannel = (channelId) => {
+    const redirectToChannel = (channelId) => {
         history.push(`/channel/${channelId}`);
         props.setSelectedMessageId(null);
         setView('message');
     };
 
-    const navigateToThread = (channelId, messageId) => {
+    const redirectToThread = (channelId, messageId) => {
         history.push(`/channel/${channelId}/thread/${messageId}`);
         props.setSelectedMessageId(messageId);
         const message = props.messages.find(m => m.id === messageId);
@@ -1093,38 +1089,38 @@ function Thread(props) {
                 'Content-Type': 'application/json'
             }
         })
-        .then(response => {
-            if (!response.ok) {
-                setValid(false);
-            }
-        })
-        .catch(error => console.error("Failed to check if thread is valid:", error));
+            .then(response => {
+                if (!response.ok) {
+                    setValid(false);
+                }
+            })
+            .catch(error => console.error("Failed to check if thread is valid:", error));
     }
 
-    if (props.rooms.length < parseInt(id, 10) || !valid) {
-        return <NotFoundPage />;
+    if (props.channels.length < parseInt(id, 10) || !valid) {
+        return <NotFoundPage/>;
     } else {
         return (
-        <div className="splash container">
+            <div className="splash container">
 
-            <div className="channel">
-                <div className="header">
-                    <h2><a className="go_to_splash_page" onClick={goToSplash}>Belay</a></h2>
-                    <div className="channelDetail">
-                        {!props.isEditing && props.room ? (
-                            <div className="displayRoomName">
-                                <h3 className="curr_room_name">
-                                    Chatting in <strong>{props.room.name}</strong>
-                                    <a onClick={props.handleEditClick}><span
-                                        className="material-symbols-outlined md-18">edit</span></a>
-                                </h3>
-                            </div>
-                        ) : (
-                            <div className="editRoomName">
-                                <h3>
-                                    Chatting in <input value={props.newRoomName}
-                                                       onChange={(e) => props.setNewRoomName(e.target.value)}/>
-                                        <button onClick={() => props.handleUpdateRoomName(id)}>Update</button>
+                <div className="channel">
+                    <div className="header">
+                        <h2><a href="/">Belay</a></h2>
+                        <div className="channelDetail">
+                            {!props.isEditing && props.channel ? (
+                                <div>
+                                    <h3>
+                                        Chatting in <strong>{props.channel.name}</strong>
+                                        <a onClick={props.handleEditClick}><span
+                                            className="material-symbols-outlined md-18">edit</span></a>
+                                    </h3>
+                                </div>
+                            ) : (
+                                <div>
+                                    <h3>
+                                        Chatting in <input value={props.newChannelName}
+                                                           onChange={(e) => props.setNewChannelName(e.target.value)}/>
+                                        <button onClick={() => props.handleUpdateChannelName(id)}>Update</button>
                                     </h3>
                                 </div>
                             )}
@@ -1136,19 +1132,19 @@ function Thread(props) {
                     <div className="channel-container">
 
                         <div className={`channel-list ${view !== 'channel' ? 'hidden' : ''}`}>
-                            {props.rooms.length > 0 ? (
+                            {props.channels.length > 0 ? (
                                 <div className="channelList">
-                                    {props.rooms.map((room) => (
-                                        <button key={room.id} onClick={() => navigateToChannel(room.id)}
-                                                style={{ backgroundColor: room.id === parseInt(id, 10) ? 'orange' : 'transparent' }}>
-                                            {room.name}
-                                            {props.unreadCounts[room.id] !== 0 && props.user &&
-                                                <strong>({props.unreadCounts[room.id]} unread messages)</strong>}
+                                    {props.channels.map((channel) => (
+                                        <button key={channel.id} onClick={() => redirectToChannel(channel.id)}
+                                                style={{backgroundColor: channel.id === parseInt(id, 10) ? 'orange' : 'transparent'}}>
+                                            {channel.name}
+                                            {props.unreadCounts[channel.id] !== 0 && props.user &&
+                                                <strong>({props.unreadCounts[channel.id]} unread messages)</strong>}
                                         </button>
                                     ))}
                                 </div>
                             ) : (
-                                <div className="noRooms">No channels yet! Create the first channel on Belay!</div>
+                                <div className="noChannels">No channels yet! Create the first channel on Belay!</div>
                             )}
                         </div>
 
@@ -1187,11 +1183,9 @@ function Thread(props) {
                                                                           // Hide tooltip
                                                                           e.currentTarget.querySelector('.users').classList.remove('show');
                                                                       }}>
-                                                                {reaction.emoji} {reaction.users.split(',').length}&nbsp;
-                                                                    <span className="users">
-                                                                    {reaction.users}
+                                                                    {reaction.emoji} {reaction.users.split(',').length}&nbsp;
+                                                                    <span className="users">{reaction.users}</span>
                                                                 </span>
-                                                            </span>
                                                             ))}
                                                         </div>
                                                     )}
@@ -1204,11 +1198,11 @@ function Thread(props) {
                                                     </div>
 
                                                     {props.repliesCount[message.id] > 0 ? (
-                                                        <button onClick={() => navigateToThread(id, message.id)}>
+                                                        <button onClick={() => redirectToThread(id, message.id)}>
                                                             Replies: {props.repliesCount[message.id]}
                                                         </button>
                                                     ) : (
-                                                        <button onClick={() => navigateToThread(id, message.id)}>Reply!</button>
+                                                        <button onClick={() => redirectToThread(id, message.id)}>Reply!</button>
                                                     )}
 
                                                 </div>
@@ -1220,14 +1214,14 @@ function Thread(props) {
                                             <label htmlFor="comment">What do you want to say?</label>
                                             <textarea name="comment" value={props.newMessage}
                                                       onChange={(e) => props.setNewMessage(e.target.value)}></textarea>
-                                            <button onClick={(e) => props.handlePostMessage(e, id)} className="post_room_messages">Post</button>
+                                            <button onClick={(e) => props.handlePostMessage(e, id)}>Post</button>
                                         </div>
                                     </div>
 
 
                                     <div className={`reply-list ${view !== 'reply' ? 'hidden' : ''}`}>
                                         <div className="back-button" onClick={handleBackToChannels}>Back to Channels</div>
-                                        <button onClick={() => navigateToChannel(id)}>close</button>
+                                        <button onClick={() => redirectToChannel(id)}>close</button>
                                         <h3>Message</h3>
                                         <div className="message">
                                             <div className="author">{props.selectedMessage && props.selectedMessage.name}</div>
@@ -1275,11 +1269,9 @@ function Thread(props) {
                                                                           // Hide tooltip
                                                                           e.currentTarget.querySelector('.users').classList.remove('show');
                                                                       }}>
-                                                                {reaction.emoji} {reaction.users.split(',').length}&nbsp;
-                                                                    <span className="users">
-                                                                    {reaction.users}
+                                                                    {reaction.emoji} {reaction.users.split(',').length}&nbsp;
+                                                                    <span className="users">{reaction.users}</span>
                                                                 </span>
-                                                            </span>
                                                             ))}
                                                         </div>
                                                     )}
@@ -1307,17 +1299,15 @@ function Thread(props) {
                                                     [props.selectedMessageId]: e.target.value
                                                 })}
                                             ></textarea>
-                                            <button onClick={(e) => props.handlePostReply(e, props.selectedMessageId)}
-                                                    className="post_room_messages">Post
-                                            </button>
+                                            <button onClick={(e) => props.handlePostReply(e, props.selectedMessageId)}>Post</button>
                                         </div>
                                     </div>
 
                                 </div>
 
                                 {!props.messages.length && (
-                                    <div className="noMessages">
-                                        <h2>Oops, we can't find that room!</h2>
+                                    <div>
+                                        <h2>Oops, we can't find that channel!</h2>
                                         <p><a onClick={goToSplash}>Let's go home and try again.</a></p>
                                     </div>
                                 )}
@@ -1331,14 +1321,14 @@ function Thread(props) {
 }
 
 
-// TODO: ------------------------ 404 Component -------------------------------
+// TODO: --------------------------------------------- 404 Component ---------------------------------------------
 function NotFoundPage() {
     document.title = "Belay 404 Page";
     return (
         <div className="notFound">
             <div className="header">
                 <h2><a href="/">Belay</a></h2>
-                <h4>404 Page</h4>
+                <h4>404 Error</h4>
             </div>
             <div className="clip">
                 <div className="container">
