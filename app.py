@@ -46,11 +46,9 @@ def new_user():
     return u
 
 
-# TODO: If your app sends users to any other routes, include them here. (This should not be necessary).
 @app.route('/')
 @app.route('/profile')
 @app.route('/login')
-@app.route('/channel')
 @app.route('/channel/<channel_id>')
 @app.route('/channel/<channel_id>/thread/<msg_id>')
 def index(channel_id=None, msg_id=None):
@@ -63,7 +61,6 @@ def page_not_found(e):
 
 
 # -------------------------------- API ROUTES ----------------------------------
-# TODO: Create the API
 @app.route('/api/signup', methods=['POST'])
 def signup():
     print("signup")  # For debugging
@@ -449,6 +446,7 @@ def reaction(message_id):
             'status': 'fail',
             'error': 'Invalid method. Only takes POST and GET methods in the request'
         }), 400
+
 
 @app.route('/api/message/<int:message_id>/reply', methods=['GET', 'POST'])
 def reply(message_id):
